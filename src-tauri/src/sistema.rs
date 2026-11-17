@@ -27,6 +27,8 @@ const BANDEJA: &str = "franguinho";
 /// Enviado à janela no evento "ausencia" quando você volta.
 #[derive(Clone, Serialize)]
 struct Ausencia {
+    /// A tarefa que estava rodando, pra descontar dela mesmo se você trocar antes de responder.
+    id: u64,
     desde: DateTime<Local>,
     minutos: i64,
 }
@@ -65,7 +67,13 @@ fn montar_menu(app: &AppHandle, estado: &Estado) -> tauri::Result<Menu<Wry>> {
         Some(r) => format!("⏱ {} (desde {})", r.tarefa, r.inicio.format("%H:%M")),
         None => "😴 Nenhuma tarefa rolando".to_owned(),
     };
-    menu.append(&MenuItem::with_id(app, "status", status, false, None::<&str>)?)?;
+    menu.append(&MenuItem::with_id(
+        app,
+        "status",
+        status,
+        false,
+        None::<&str>,
+    )?)?;
     menu.append(&MenuItem::with_id(
         app,
         "terminar",
@@ -94,7 +102,13 @@ fn montar_menu(app: &AppHandle, estado: &Estado) -> tauri::Result<Menu<Wry>> {
     }
 
     menu.append(&PredefinedMenuItem::separator(app)?)?;
-    menu.append(&MenuItem::with_id(app, "abrir", "Abrir o Franguinho", true, None::<&str>)?)?;
+    menu.append(&MenuItem::with_id(
+        app,
+        "abrir",
+        "Abrir o Franguinho",
+        true,
+        None::<&str>,
+    )?)?;
     menu.append(&MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?)?;
     Ok(menu)
 }
@@ -218,7 +232,14 @@ pub fn vigiar(app: AppHandle) {
                 let minutos = (agora - desde).num_minutes();
                 if minutos >= AUSENTE_MIN {
                     mostrar_janela(&app);
-                    let _ = app.emit("ausencia", Ausencia { desde, minutos });
+                    let _ = app.emit(
+                        "ausencia",
+                        Ausencia {
+                            id: r.id,
+                            desde,
+                            minutos,
+                        },
+                    );
                 }
             }
 

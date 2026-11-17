@@ -18,8 +18,42 @@ pub struct Estado {
 }
 
 impl Estado {
+    /// Monta o estado carregado do disco, dando id aos registros que não têm
+    /// (ou que repetem um id). Devolve também se algo precisou ser corrigido.
+    fn novo(mut registros: Vec<Registro>, projetos: Vec<String>) -> (Self, bool) {
+        let mut vistos = std::collections::HashSet::new();
+        let mut proximo = registros.iter().map(|r| r.id).max().unwrap_or(0) + 1;
+        let mut corrigiu = false;
+        for r in &mut registros {
+            if r.id == 0 || !vistos.insert(r.id) {
+                r.id = proximo;
+                vistos.insert(proximo);
+                proximo += 1;
+                corrigiu = true;
+            }
+        }
+        (
+            Self {
+                registros,
+                projetos,
+            },
+            corrigiu,
+        )
+    }
+
     pub fn em_andamento(&self) -> Option<&Registro> {
         self.registros.iter().find(|r| r.fim.is_none())
+    }
+
+    fn proximo_id(&self) -> u64 {
+        self.registros.iter().map(|r| r.id).max().unwrap_or(0) + 1
+    }
+
+    fn posicao(&self, id: u64) -> Result<usize, String> {
+        self.registros
+            .iter()
+            .position(|r| r.id == id)
+            .ok_or_else(|| "Esse registro não existe mais.".to_owned())
     }
 }
 
@@ -78,7 +112,9 @@ impl Franguinho {
                 }
                 atual.fim = Some(Local::now());
             }
+            let id = e.proximo_id();
             e.registros.push(Registro {
+                id,
                 tarefa,
                 projeto,
                 inicio: Local::now(),
@@ -88,28 +124,30 @@ impl Franguinho {
         })
     }
 
-    /// Desconta uma ausência: a tarefa rodando termina quando você saiu e, se
+    /// Desconta uma ausência da tarefa `id`: ela termina quando você saiu e, se
     /// `continuar`, recomeça agora com o mesmo nome e projeto.
     pub fn descontar_ausencia(
         &self,
         app: &AppHandle,
+        id: u64,
         desde: DateTime<Local>,
         continuar: bool,
     ) -> Resultado {
         self.alterar(app, |e| {
-            let i = e
-                .registros
-                .iter()
-                .position(|r| r.fim.is_none())
-                .ok_or("Não tem tarefa rodando.")?;
+            let i = e.posicao(id)?;
             let atual = e.registros[i].clone();
+            if atual.fim.is_some() {
+                return Err("Essa tarefa já tinha terminado.".into());
+            }
             if desde <= atual.inicio {
                 e.registros.remove(i); // saiu logo que começou: não sobra nada
             } else {
                 e.registros[i].fim = Some(desde.min(Local::now()));
             }
             if continuar {
+                let id = e.proximo_id();
                 e.registros.push(Registro {
+                    id,
                     inicio: Local::now(),
                     fim: None,
                     ..atual
@@ -130,9 +168,7 @@ impl Franguinho {
 }
 
 fn limpo(texto: Option<String>) -> Option<String> {
-    texto
-        .map(|t| t.trim().to_owned())
-        .filter(|t| !t.is_empty())
+    texto.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty())
 }
 
 #[tauri::command]
@@ -159,10 +195,11 @@ fn terminar(app: AppHandle, f: State<Franguinho>) -> Resultado {
 fn descontar_ausencia(
     app: AppHandle,
     f: State<Franguinho>,
+    id: u64,
     desde: DateTime<Local>,
     continuar: bool,
 ) -> Resultado {
-    f.descontar_ausencia(&app, desde, continuar)
+    f.descontar_ausencia(&app, id, desde, continuar)
 }
 
 /// Corrige um registro (nome, projeto e horários), pra quando você esquece de
@@ -171,7 +208,7 @@ fn descontar_ausencia(
 fn editar_registro(
     app: AppHandle,
     f: State<Franguinho>,
-    indice: usize,
+    id: u64,
     tarefa: String,
     projeto: Option<String>,
     inicio: DateTime<Local>,
@@ -194,14 +231,13 @@ fn editar_registro(
         }
     }
     f.alterar(&app, |e| {
-        let r = e
-            .registros
-            .get_mut(indice)
-            .ok_or("Esse registro não existe mais.")?;
+        let i = e.posicao(id)?;
+        let r = &mut e.registros[i];
         if r.fim.is_none() != fim.is_none() {
             return Err("Não dá pra mudar se a tarefa está rodando ou não.".into());
         }
         *r = Registro {
+            id,
             tarefa,
             projeto,
             inicio,
@@ -213,12 +249,10 @@ fn editar_registro(
 }
 
 #[tauri::command]
-fn apagar_registro(app: AppHandle, f: State<Franguinho>, indice: usize) -> Resultado {
+fn apagar_registro(app: AppHandle, f: State<Franguinho>, id: u64) -> Resultado {
     f.alterar(&app, |e| {
-        if indice >= e.registros.len() {
-            return Err("Esse registro não existe mais.".into());
-        }
-        e.registros.remove(indice);
+        let i = e.posicao(id)?;
+        e.registros.remove(i);
         Ok(())
     })
 }
@@ -257,10 +291,13 @@ fn atalho() -> &'static str {
 
 fn main() {
     let store = Store::new();
-    let estado = Estado {
-        registros: store.carregar(),
-        projetos: store.carregar_projetos(),
-    };
+    let (estado, corrigiu) = Estado::novo(store.carregar(), store.carregar_projetos());
+    if corrigiu {
+        // Grava os ids novos pra eles continuarem os mesmos na próxima vez.
+        if let Err(e) = store.salvar(&estado.registros) {
+            eprintln!("não consegui gravar os ids dos registros: {e}");
+        }
+    }
 
     tauri::Builder::default()
         // Abrir o app de novo só traz a janela da cópia que já está rodando,

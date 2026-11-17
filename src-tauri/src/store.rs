@@ -4,6 +4,9 @@ use std::{fs, io, path::PathBuf};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Registro {
+    /// Identificador fixo; registros antigos (sem id) ganham um ao carregar.
+    #[serde(default)]
+    pub id: u64,
     pub tarefa: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub projeto: Option<String>,

@@ -20,10 +20,10 @@ let estado = { registros: [], projetos: [] };
 let comemorandoAte = 0;
 let confirmarApagar = null;
 let criandoProjeto = false;
-let editando = null; // índice do registro aberto pra edição
+let editando = null; // id do registro aberto pra edição
 let editandoInicio = false; // ajustando o "desde" da tarefa rodando
 let periodo = "hoje";
-let ausencia = null; // { desde, minutos } enquanto o diálogo de "você voltou" está aberto
+let ausencia = null; // { id, desde, minutos } enquanto o diálogo de "você voltou" está aberto
 let conquistasFeitas = null; // ids já desbloqueados, pra comemorar só as novas
 let acessorio = lerPreferencia("acessorio");
 
@@ -206,7 +206,7 @@ function renderTarefa() {
     }
     editandoInicio = false;
     await chamar("editar_registro", {
-      indice: estado.registros.indexOf(r),
+      id: r.id,
       tarefa: r.tarefa,
       projeto: r.projeto,
       inicio: inicio.toISOString(),
@@ -313,10 +313,7 @@ function renderHistorico() {
   const caixa = $("historico");
   caixa.replaceChildren();
 
-  const feitos = estado.registros
-    .map((r, indice) => ({ ...r, indice }))
-    .filter((r) => r.fim)
-    .reverse();
+  const feitos = estado.registros.filter((r) => r.fim).reverse();
 
   if (!feitos.length) {
     caixa.append(el("p", { className: "vazio" }, "Nenhum ovo ainda. Comece uma tarefa! 🥚"));
@@ -334,7 +331,7 @@ function renderHistorico() {
       caixa.append(el("div", { className: "dia" },
         el("span", {}, nomeDoDia(r.inicio)), el("span", {}, curto(total))));
     }
-    caixa.append(editando === r.indice ? itemEditando(r) : item(r));
+    caixa.append(editando === r.id ? itemEditando(r) : item(r));
   }
 }
 
@@ -349,23 +346,23 @@ function item(r) {
     el("div", { className: "nome" }, r.tarefa),
     el("div", { className: "meta" }, meta));
   textos.addEventListener("click", () => {
-    editando = r.indice;
+    editando = r.id;
     confirmarApagar = null;
     renderHistorico();
   });
 
   const apagar = el("button", { className: "apagar", type: "button", title: "Apagar registro" },
-    confirmarApagar === r.indice ? "apagar?" : "🗑");
-  if (confirmarApagar === r.indice) apagar.classList.add("confirmar");
+    confirmarApagar === r.id ? "apagar?" : "🗑");
+  if (confirmarApagar === r.id) apagar.classList.add("confirmar");
   apagar.addEventListener("click", () => {
-    if (confirmarApagar === r.indice) {
+    if (confirmarApagar === r.id) {
       confirmarApagar = null;
-      chamar("apagar_registro", { indice: r.indice });
+      chamar("apagar_registro", { id: r.id });
     } else {
-      confirmarApagar = r.indice;
+      confirmarApagar = r.id;
       renderHistorico();
       setTimeout(() => {
-        if (confirmarApagar === r.indice) { confirmarApagar = null; renderHistorico(); }
+        if (confirmarApagar === r.id) { confirmarApagar = null; renderHistorico(); }
       }, 3000);
     }
   });
@@ -390,7 +387,7 @@ function itemEditando(r) {
     const novoFim = comHora(novoInicio, fim.value);
     if (novoFim <= novoInicio) novoFim.setDate(novoFim.getDate() + 1); // passou da meia-noite
     const ok = await chamar("editar_registro", {
-      indice: r.indice,
+      id: r.id,
       tarefa: nome.value,
       projeto: projeto.value || null,
       inicio: novoInicio.toISOString(),
@@ -438,7 +435,7 @@ async function resolverAusencia(continuar) {
     atualizarFala();
     return;
   }
-  await chamar("descontar_ausencia", { desde: dados.desde, continuar });
+  await chamar("descontar_ausencia", { id: dados.id, desde: dados.desde, continuar });
   if (continuar) avisar(`Descontei ${curto(dados.minutos * 60000)}. Bora continuar! 🐔`);
 }
 
@@ -648,6 +645,12 @@ function imitacaoDoBackend() {
   const e = { registros: [], projetos: ["Trabalho", "Estudos", "Casa"] };
   const limpo = (t) => (t ?? "").trim() || null;
   const copia = () => structuredClone(e);
+  const novoId = () => Math.max(0, ...e.registros.map((r) => r.id)) + 1;
+  const posicao = (id) => {
+    const i = e.registros.findIndex((r) => r.id === id);
+    if (i < 0) throw "Esse registro não existe mais.";
+    return i;
+  };
   const comandos = {
     carregar: copia,
     comecar({ tarefa, projeto }) {
@@ -656,7 +659,7 @@ function imitacaoDoBackend() {
       if (!tarefa) throw "Me conta o que você vai fazer!";
       const atual = e.registros.find((r) => !r.fim);
       if (atual) atual.fim = new Date().toISOString();
-      e.registros.push({ tarefa, projeto, inicio: new Date().toISOString(), fim: null });
+      e.registros.push({ id: novoId(), tarefa, projeto, inicio: new Date().toISOString(), fim: null });
       return copia();
     },
     terminar() {
@@ -664,22 +667,22 @@ function imitacaoDoBackend() {
       if (atual) atual.fim = new Date().toISOString();
       return copia();
     },
-    editar_registro({ indice, tarefa, projeto, inicio, fim }) {
+    editar_registro({ id, tarefa, projeto, inicio, fim }) {
       if (fim && fim <= inicio) throw "O fim precisa ser depois do início.";
-      Object.assign(e.registros[indice], { tarefa, projeto, inicio, fim });
+      Object.assign(e.registros[posicao(id)], { tarefa, projeto, inicio, fim });
       e.registros.sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
       return copia();
     },
-    descontar_ausencia({ desde, continuar }) {
-      const i = e.registros.findIndex((r) => !r.fim);
-      if (i < 0) throw "Não tem tarefa rodando.";
+    descontar_ausencia({ id, desde, continuar }) {
+      const i = posicao(id);
       const atual = { ...e.registros[i] };
+      if (atual.fim) throw "Essa tarefa já tinha terminado.";
       if (desde <= atual.inicio) e.registros.splice(i, 1);
       else e.registros[i].fim = desde;
-      if (continuar) e.registros.push({ ...atual, inicio: new Date().toISOString(), fim: null });
+      if (continuar) e.registros.push({ ...atual, id: novoId(), inicio: new Date().toISOString(), fim: null });
       return copia();
     },
-    apagar_registro({ indice }) { e.registros.splice(indice, 1); return copia(); },
+    apagar_registro({ id }) { e.registros.splice(posicao(id), 1); return copia(); },
     adicionar_projeto({ nome }) {
       if (!e.projetos.includes(nome.trim())) e.projetos.push(nome.trim());
       return copia();
@@ -690,7 +693,7 @@ function imitacaoDoBackend() {
   };
   // No navegador, dá pra testar o diálogo com simularAusencia(25) no console.
   window.simularAusencia = (minutos) =>
-    mostrarAusencia({ desde: new Date(Date.now() - minutos * 60000).toISOString(), minutos });
+    mostrarAusencia({ id: emAndamento()?.id, desde: new Date(Date.now() - minutos * 60000).toISOString(), minutos });
   return async (comando, args) => comandos[comando](args ?? {});
 }
 
