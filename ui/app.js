@@ -2,6 +2,7 @@ import {
   SEM_PROJETO, comHora, conquistas as calcularConquistas, curto, duracao, horaCampo,
   nomeDoDia, relogio, resumo, sequencias as calcularSequencias,
 } from "./logica.js";
+import { svgMascote } from "./mascote.js";
 
 // Dentro do Tauri, conversa com o Rust. Aberto direto no navegador (pra mexer no
 // visual), usa uma imitação em memória com os mesmos comandos.
@@ -32,6 +33,8 @@ let acessorio = lerPreferencia("acessorio");
 const ACESSORIOS = { chapeu: "chapéu de festa", oculos: "óculos escuros", laco: "laço", coroa: "coroa" };
 
 const $ = (id) => document.getElementById(id);
+
+$("mascote").innerHTML = svgMascote;
 
 // ---------- Estado e ações ----------
 
@@ -97,6 +100,11 @@ $("mascote").addEventListener("click", () => {
   m.classList.add("cutucado");
   $("fala").textContent = "Có!";
   setTimeout(atualizarFala, 1200);
+});
+
+$("botao-mini").addEventListener("click", () => {
+  if (tauri) invoke("alternar_mini").catch((e) => avisar(String(e)));
+  else window.open("mini.html", "mini", "width=280,height=96"); // no navegador, só uma prévia
 });
 
 $("rodando-desde").addEventListener("click", () => {

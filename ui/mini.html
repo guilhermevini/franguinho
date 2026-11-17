@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Franguinho mini</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="mini.css">
+</head>
+<body class="mini" data-tauri-drag-region>
+  <button class="mascote dormindo" id="mascote" type="button" title="Abrir o Franguinho"></button>
+  <div class="textos" data-tauri-drag-region>
+    <span class="tarefa" id="tarefa" data-tauri-drag-region>Zzz...</span>
+    <span class="relogio" id="relogio" data-tauri-drag-region>clique pra começar</span>
+  </div>
+  <button class="acao" id="acao" type="button" title="Começar uma tarefa">▶</button>
+  <button class="fechar" id="fechar" type="button" title="Fechar a mini janela">×</button>
+  <script type="module" src="mini.js"></script>
+</body>
+</html>

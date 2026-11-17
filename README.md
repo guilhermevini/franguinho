@@ -7,7 +7,7 @@ lógica e dados em Rust, interface em HTML/CSS/JS puro (sem npm, sem build).
 ## Estrutura
 
 ```
-ui/                 interface (index.html, style.css, app.js, logica.js, fonte Nunito)
+ui/                 interface (index.html, mini.html, app.js, mini.js, logica.js, mascote.js, CSS, fonte)
 tests/              testes da interface (node --test)
 src-tauri/          app Rust: regras (estado.rs), comandos, armazenamento, bandeja, ícones
 assets/icone.svg    fonte do ícone (gere os PNG/ICNS/ICO com `cargo tauri icon`)
@@ -62,6 +62,8 @@ Clicar noutro projeto troca de tarefa; passe o mouse e clique no **×** para rem
 - **Você voltou?** Se você some por 10 min (`AUSENTE_MIN`) — sem mexer no mouse/teclado ou com o
   computador dormindo — com uma tarefa rodando, ao voltar o franguinho pergunta se é pra descontar e
   continuar, terminar na hora em que você saiu ou manter tudo.
+- **Mini janela:** só o franguinho, a tarefa e o cronômetro, sem bordas e sempre por cima.
+  Abra pelo botão **🪟 mini** da janela principal ou pelo menu da bandeja; arraste pra onde quiser.
 - **Uma cópia só:** abrir o app de novo só traz a janela que já está aberta.
 
 ## Ovos e conquistas

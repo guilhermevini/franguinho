@@ -6,7 +6,7 @@ use chrono::{DateTime, Local, TimeDelta};
 use serde::Serialize;
 use std::{thread, time::Duration};
 use tauri::{
-    AppHandle, Emitter, Manager, Wry,
+    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, Wry,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{TrayIcon, TrayIconBuilder},
 };
@@ -23,6 +23,7 @@ const ESQUECIDO_HORAS: i64 = 3;
 const AUSENTE_MIN: i64 = 10;
 const INTERVALO: Duration = Duration::from_secs(15);
 const BANDEJA: &str = "franguinho";
+const MINI: &str = "mini";
 
 /// Enviado à janela no evento "ausencia" quando você volta.
 #[derive(Clone, Serialize)]
@@ -104,6 +105,13 @@ fn montar_menu(app: &AppHandle, estado: &Estado) -> tauri::Result<Menu<Wry>> {
     menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&MenuItem::with_id(
         app,
+        "mini",
+        "🪟 Mini janela",
+        true,
+        None::<&str>,
+    )?)?;
+    menu.append(&MenuItem::with_id(
+        app,
         "abrir",
         "Abrir o Franguinho",
         true,
@@ -121,6 +129,7 @@ fn ao_clicar(app: &AppHandle, id: &str) {
             mostrar_janela(app);
             Ok(())
         }
+        "mini" => alternar_mini(app).map_err(|e| e.to_string()),
         "sair" => {
             app.exit(0);
             Ok(())
@@ -181,6 +190,38 @@ fn alternar(app: &AppHandle) {
         mostrar_janela(app);
         let _ = app.emit("focar-campo", ());
     }
+}
+
+/// Mostra ou esconde a mini janela: só o franguinho e o cronômetro, sem bordas,
+/// sempre por cima. Na primeira vez ela nasce no canto superior direito.
+pub fn alternar_mini(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(mini) = app.get_webview_window(MINI) {
+        if mini.is_visible()? {
+            mini.hide()?;
+        } else {
+            mini.show()?;
+        }
+        return Ok(());
+    }
+    let (largura, altura) = (260.0, 80.0);
+    let mut janela = WebviewWindowBuilder::new(app, MINI, WebviewUrl::App("mini.html".into()))
+        .title("Franguinho mini")
+        .inner_size(largura, altura)
+        .resizable(false)
+        .maximizable(false)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible_on_all_workspaces(true)
+        .focused(false);
+    if let Some(monitor) = app.primary_monitor()? {
+        let escala = monitor.scale_factor();
+        let tamanho = monitor.size().to_logical::<f64>(escala);
+        let origem = monitor.position().to_logical::<f64>(escala);
+        janela = janela.position(origem.x + tamanho.width - largura - 24.0, origem.y + 48.0);
+    }
+    janela.build()?;
+    Ok(())
 }
 
 pub fn mostrar_janela(app: &AppHandle) {

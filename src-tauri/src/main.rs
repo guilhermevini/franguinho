@@ -137,6 +137,19 @@ fn exportar_csv(f: State<Franguinho>) -> Result<String, String> {
         .map_err(|e| format!("Não deu pra exportar: {e}"))
 }
 
+/// Assíncrono de propósito: criar janela num comando síncrono trava no Windows.
+#[tauri::command]
+async fn alternar_mini(app: AppHandle) -> Result<(), String> {
+    sistema::alternar_mini(&app).map_err(|e| e.to_string())
+}
+
+/// Traz a janela principal, pronta pra digitar uma tarefa nova.
+#[tauri::command]
+fn abrir_janela(app: AppHandle) {
+    sistema::mostrar_janela(&app);
+    let _ = app.emit("focar-campo", ());
+}
+
 #[tauri::command]
 fn atalho() -> &'static str {
     sistema::ATALHO
@@ -190,6 +203,8 @@ fn main() {
             adicionar_projeto,
             remover_projeto,
             exportar_csv,
+            alternar_mini,
+            abrir_janela,
             atalho,
         ])
         .build(tauri::generate_context!())

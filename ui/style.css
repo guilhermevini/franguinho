@@ -524,3 +524,8 @@ kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px so
   outline-offset: 2px;
 }
 .botao:focus:not(:focus-visible) { outline: none; }
+
+/* ---------- Botão da mini janela ---------- */
+
+.palco { position: relative; }
+.botao-mini { position: absolute; top: 0; right: 0; }
