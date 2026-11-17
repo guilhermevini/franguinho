@@ -239,9 +239,14 @@ pub fn vigiar(app: AppHandle) {
         let mut avisado: Option<(DateTime<Local>, i64)> = None;
         let mut ausente_desde: Option<DateTime<Local>> = None;
         let mut ultima_volta = Local::now();
+        let mut dia_do_backup = ultima_volta.date_naive(); // o de hoje foi feito ao abrir
         loop {
             thread::sleep(INTERVALO);
             let agora = Local::now();
+            if agora.date_naive() != dia_do_backup {
+                app.state::<Franguinho>().backup_diario();
+                dia_do_backup = agora.date_naive();
+            }
             let estado = app.state::<Franguinho>().ler();
             if let Some(bandeja) = app.tray_by_id(BANDEJA) {
                 atualizar_titulo(&bandeja, &estado);

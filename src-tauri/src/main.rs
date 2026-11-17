@@ -55,6 +55,13 @@ impl Franguinho {
         self.alterar(app, |e| e.comecar(tarefa, projeto, Local::now()))
     }
 
+    /// Backup do dia, se ainda não foi feito (ver Store::backup_diario).
+    pub fn backup_diario(&self) {
+        if let Err(e) = self.store.backup_diario(Local::now().date_naive()) {
+            eprintln!("não consegui fazer o backup do dia: {e}");
+        }
+    }
+
     pub fn terminar(&self, app: &AppHandle) -> Resultado {
         self.alterar(app, |e| {
             e.terminar(Local::now());
@@ -157,6 +164,10 @@ fn atalho() -> &'static str {
 
 fn main() {
     let store = Store::new();
+    // Retrato dos dados como estavam antes de qualquer mudança de hoje.
+    if let Err(e) = store.backup_diario(Local::now().date_naive()) {
+        eprintln!("não consegui fazer o backup do dia: {e}");
+    }
     let (estado, corrigiu) = Estado::novo(store.carregar(), store.carregar_projetos());
     if corrigiu {
         // Grava os ids novos pra eles continuarem os mesmos na próxima vez.

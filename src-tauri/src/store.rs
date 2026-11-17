@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, TimeDelta};
+use chrono::{DateTime, Local, NaiveDate, TimeDelta};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{fs, io, path::PathBuf};
 
@@ -20,6 +20,9 @@ impl Registro {
         self.fim.unwrap_or_else(Local::now) - self.inicio
     }
 }
+
+/// Quantos dias de backup ficam guardados.
+const BACKUPS_MANTIDOS: usize = 7;
 
 /// Guarda os dados em JSON dentro da pasta de dados do sistema
 /// (ex.: ~/Library/Application Support/franguinho no macOS,
@@ -85,6 +88,44 @@ impl Store {
         let tmp = caminho.with_extension("json.tmp");
         fs::write(&tmp, json)?;
         fs::rename(&tmp, &caminho)
+    }
+
+    /// Copia os JSON pra `backups/AAAA-MM-DD`, uma vez por dia, e apaga os dias
+    /// mais antigos que BACKUPS_MANTIDOS. Devolve se fez um backup novo.
+    pub fn backup_diario(&self, hoje: NaiveDate) -> io::Result<bool> {
+        if !self.pasta.join("registros.json").exists() {
+            return Ok(false); // nada pra guardar ainda
+        }
+        let raiz = self.pasta.join("backups");
+        let dia = hoje.format("%Y-%m-%d").to_string();
+        let destino = raiz.join(&dia);
+        if destino.exists() {
+            return Ok(false);
+        }
+        // Copia numa pasta temporária e renomeia: nunca fica um backup pela metade.
+        let tmp = raiz.join(format!(".{dia}.tmp"));
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(&tmp)?;
+        for nome in ["registros.json", "projetos.json"] {
+            let arquivo = self.pasta.join(nome);
+            if arquivo.exists() {
+                fs::copy(&arquivo, tmp.join(nome))?;
+            }
+        }
+        fs::rename(&tmp, &destino)?;
+
+        let mut dias: Vec<PathBuf> = fs::read_dir(&raiz)?
+            .filter_map(|e| e.ok())
+            .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
+            .map(|e| e.path())
+            .filter(|p| p.is_dir())
+            .collect();
+        dias.sort();
+        let excesso = dias.len().saturating_sub(BACKUPS_MANTIDOS);
+        for velho in &dias[..excesso] {
+            fs::remove_dir_all(velho)?;
+        }
+        Ok(true)
     }
 
     pub fn exportar_csv(&self, registros: &[Registro]) -> io::Result<PathBuf> {
@@ -199,6 +240,45 @@ mod testes {
             fs::read_to_string(backups[0].path()).unwrap(),
             "isso não é json"
         );
+    }
+
+    #[test]
+    fn backup_uma_vez_por_dia_guardando_sete() {
+        let pasta = Pasta::nova("backup");
+        let store = Store::em(pasta.0.clone());
+        let dia = |d| NaiveDate::from_ymd_opt(2026, 11, d).unwrap();
+        assert!(
+            !store.backup_diario(dia(1)).unwrap(),
+            "sem dados, sem backup"
+        );
+
+        store.salvar(&[registro(1, "a", None)]).unwrap();
+        store.salvar_projetos(&["Trabalho".into()]).unwrap();
+        assert!(store.backup_diario(dia(1)).unwrap());
+        let copia = pasta.0.join("backups/2026-11-01");
+        assert!(copia.join("registros.json").exists());
+        assert!(copia.join("projetos.json").exists());
+
+        // No mesmo dia não refaz (o backup é o retrato do começo do dia).
+        store.salvar(&[]).unwrap();
+        assert!(!store.backup_diario(dia(1)).unwrap());
+        assert!(
+            fs::read_to_string(copia.join("registros.json"))
+                .unwrap()
+                .contains("\"a\"")
+        );
+
+        for d in 2..=9 {
+            store.backup_diario(dia(d)).unwrap();
+        }
+        let mut dias: Vec<String> = fs::read_dir(pasta.0.join("backups"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        dias.sort();
+        assert_eq!(dias.len(), 7);
+        assert_eq!(dias.first().unwrap(), "2026-11-03");
+        assert_eq!(dias.last().unwrap(), "2026-11-09");
     }
 
     #[test]

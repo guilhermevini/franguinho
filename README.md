@@ -98,6 +98,10 @@ escolhido nas conquistas tem prioridade sobre o da temporada.
 
 O botão **📄 Exportar CSV** gera `registros.csv` na mesma pasta.
 
+**Backup automático:** uma vez por dia (ao abrir e na virada do dia), os dois JSON são copiados para
+`backups/AAAA-MM-DD/` nessa pasta. Ficam os 7 dias mais recentes. Pra restaurar, feche o app e copie
+os arquivos de volta.
+
 ## Licença
 
 [MIT](LICENSE). A fonte Nunito (`ui/fonts`) é distribuída sob a SIL Open Font License 1.1.
