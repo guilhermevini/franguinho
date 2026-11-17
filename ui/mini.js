@@ -1,4 +1,4 @@
-import { conquistas, duracao, relogio } from "./logica.js";
+import { acessorioVisivel, duracao, relogio } from "./logica.js";
 import { svgMascote } from "./mascote.js";
 
 const tauri = window.__TAURI__;
@@ -35,8 +35,7 @@ function render() {
   // Mesmo acessório da janela principal (mesmo armazenamento local).
   let acessorio = "";
   try { acessorio = localStorage.getItem("franguinho.acessorio") ?? ""; } catch { /* sem armazenamento */ }
-  const liberados = new Set(conquistas(estado.registros).filter((c) => c.ok).map((c) => c.acessorio));
-  m.dataset.acessorio = liberados.has(acessorio) ? acessorio : "";
+  m.dataset.acessorio = acessorioVisivel(estado.registros, acessorio);
 
   document.body.classList.toggle("ocioso", !r);
   document.body.classList.toggle("alerta", !!r && duracao(r) >= ESQUECIDO_MS);

@@ -1,6 +1,6 @@
 import {
-  SEM_PROJETO, comHora, conquistas as calcularConquistas, curto, duracao, horaCampo,
-  nomeDoDia, relogio, resumo, sequencias as calcularSequencias,
+  SEM_PROJETO, acessorioVisivel, comHora, conquistas as calcularConquistas, curto, duracao,
+  horaCampo, nomeDoDia, relogio, resumo, sequencias as calcularSequencias, temporada,
 } from "./logica.js";
 import { svgMascote } from "./mascote.js";
 
@@ -163,22 +163,22 @@ function renderMascote() {
   const m = $("mascote");
   m.classList.remove("dormindo", "trabalhando", "comemorando");
   m.classList.add(humor());
-  // Só veste o que ainda está liberado (registros apagados podem tirar a conquista).
-  const liberados = new Set(calcularConquistas(estado.registros).filter((c) => c.ok).map((c) => c.acessorio));
-  m.dataset.acessorio = liberados.has(acessorio) ? acessorio : "";
+  m.dataset.acessorio = acessorioVisivel(estado.registros, acessorio);
   atualizarFala();
 }
 
 function atualizarFala() {
   if (ausencia) return; // o diálogo de ausência manda na fala
   const h = humor();
-  let fala = "Zzz... me dá uma tarefa pra ciscar?";
+  const t = temporada();
+  let fala = t?.dormindo ?? "Zzz... me dá uma tarefa pra ciscar?";
   if (h === "comemorando") fala = "Có-có-có! Ovo botado, tarefa feita!";
   if (h === "trabalhando") {
     const ms = duracao(emAndamento());
+    const frases = t ? [t.trabalhando, ...FRASES] : FRASES;
     fala = esquecido()
       ? `Ei, esqueceu ligado? Já faz ${Math.floor(ms / 3600000)}h!`
-      : FRASES[Math.floor(ms / 300000) % FRASES.length];
+      : frases[Math.floor(ms / 300000) % frases.length];
   }
   $("fala").textContent = fala;
   $("cartao-tarefa").classList.toggle("alerta", esquecido());
@@ -446,6 +446,8 @@ function renderNinho() {
   caixa.replaceChildren();
   if (ovos) caixa.append(el("span", { title: "Tarefas terminadas hoje" }, `🥚 ${ovos} hoje`));
   if (atual >= 2) caixa.append(el("span", { title: "Dias seguidos com tarefas" }, `🔥 ${atual} dias seguidos`));
+  const t = temporada();
+  if (t) caixa.append(el("span", { title: "O franguinho se veste pra ocasião" }, `${t.emoji} ${t.nome}`));
 }
 
 function renderConquistas() {

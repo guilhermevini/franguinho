@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  comHora, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, relogio, resumo, sequencias,
+  acessorioVisivel, comHora, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
+  relogio, resumo, sequencias, temporada,
 } from "../ui/logica.js";
 
 // 17/11/2026 é uma terça. Datas montadas no fuso local, como o app faz.
@@ -86,4 +87,44 @@ test("conquistas são calculadas a partir dos registros", () => {
   const duzia = conquistas([feito("a", null, 17, 9, 0, 9, 10)]).find((c) => c.id === "duzia");
   assert.deepEqual(duzia.prog, [1, 12]);
   assert.equal(duzia.acessorio, "chapeu");
+});
+
+test("pascoa bate com o calendário", () => {
+  const iso = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  assert.equal(iso(pascoa(2025)), "2025-4-20");
+  assert.equal(iso(pascoa(2026)), "2026-4-5");
+  assert.equal(iso(pascoa(2027)), "2027-3-28");
+  assert.equal(iso(pascoa(2038)), "2038-4-25"); // a mais tardia possível
+});
+
+test("temporada de cada época do ano", () => {
+  const t = (ano, mes, dia) => temporada(new Date(ano, mes - 1, dia, 12))?.id ?? null;
+  // Carnaval 2026: terça 17/02 → de sábado 14 a quarta 18
+  assert.equal(t(2026, 2, 13), null);
+  assert.equal(t(2026, 2, 14), "carnaval");
+  assert.equal(t(2026, 2, 18), "carnaval");
+  assert.equal(t(2026, 2, 19), null);
+  // Páscoa 2026: 05/04 → semana de 29/03 a 05/04
+  assert.equal(t(2026, 3, 28), null);
+  assert.equal(t(2026, 3, 29), "pascoa");
+  assert.equal(t(2026, 4, 5), "pascoa");
+  assert.equal(t(2026, 4, 6), null);
+  assert.equal(t(2026, 6, 24), "junina");
+  assert.equal(t(2026, 10, 24), null);
+  assert.equal(t(2026, 10, 31), "halloween");
+  assert.equal(t(2026, 11, 30), null);
+  assert.equal(t(2026, 12, 1), "natal");
+  assert.equal(t(2026, 12, 25), "natal");
+  assert.equal(t(2026, 12, 31), "anoNovo");
+  assert.equal(t(2027, 1, 2), "anoNovo");
+  assert.equal(t(2027, 1, 3), null);
+});
+
+test("acessório escolhido vence a temporada, se a conquista ainda vale", () => {
+  const natal = new Date(2026, 11, 10, 12);
+  const longa = [feito("longa", null, 17, 9, 0, 10, 30)]; // libera os óculos
+  assert.equal(acessorioVisivel([], "", natal), "gorro");
+  assert.equal(acessorioVisivel(longa, "oculos", natal), "oculos");
+  assert.equal(acessorioVisivel([], "oculos", natal), "gorro"); // sem a conquista, volta pro gorro
+  assert.equal(acessorioVisivel([], "", new Date(2026, 7, 10)), "");
 });

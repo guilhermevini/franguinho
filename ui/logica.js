@@ -132,3 +132,69 @@ export function conquistas(registros, agora = new Date()) {
       prog: [feitos.length, 100], acessorio: "coroa" },
   ].map((c) => ({ ...c, ok: c.ok ?? c.prog[0] >= c.prog[1] }));
 }
+
+// ---------- Temporadas ----------
+
+/// Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher), no fuso local.
+export function pascoa(ano) {
+  const a = ano % 19;
+  const b = Math.floor(ano / 100);
+  const c = ano % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31);
+  const dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(ano, mes - 1, dia);
+}
+
+export const TEMPORADAS = {
+  carnaval: { emoji: "🎭", nome: "Carnaval", acessorio: "mascara",
+    dormindo: "Ê, carnaval! Uma tarefinha antes do bloco?", trabalhando: "Foco no samba... digo, na tarefa!" },
+  pascoa: { emoji: "🐣", nome: "Páscoa", acessorio: "orelhas",
+    dormindo: "Pintinho de Páscoa às ordens!", trabalhando: "Escondendo ovos de produtividade..." },
+  junina: { emoji: "🌽", nome: "Festa junina", acessorio: "palha",
+    dormindo: "Arraiá do franguinho! Bora ciscar?", trabalhando: "Olha a pamonha... digo, o foco!" },
+  halloween: { emoji: "🎃", nome: "Halloween", acessorio: "bruxa",
+    dormindo: "Buuu! Tô com medo de ficar parado.", trabalhando: "Gostosuras ou tarefas!" },
+  natal: { emoji: "🎅", nome: "Clima de Natal", acessorio: "gorro",
+    dormindo: "Ho ho ho... me dá uma tarefa?", trabalhando: "Ho ho ho! Foco antes da ceia!" },
+  anoNovo: { emoji: "🎆", nome: "Ano novo", acessorio: "chapeu",
+    dormindo: "Feliz ano novo! Bora começar?", trabalhando: "Ano novo, ovos novos!" },
+};
+
+/// A temporada do dia, ou null. Carnaval e Páscoa mudam de data todo ano.
+export function temporada(agora = new Date()) {
+  const ano = agora.getFullYear();
+  const mes = agora.getMonth() + 1;
+  const dia = agora.getDate();
+  const hoje = new Date(ano, agora.getMonth(), dia);
+  const somar = (data, dias) => new Date(data.getFullYear(), data.getMonth(), data.getDate() + dias);
+  const entre = (inicio, fim) => hoje >= inicio && hoje <= fim;
+
+  const domingoDePascoa = pascoa(ano);
+  const tercaDeCarnaval = somar(domingoDePascoa, -47);
+  const comId = (id) => ({ id, ...TEMPORADAS[id] });
+
+  if (entre(somar(tercaDeCarnaval, -3), somar(tercaDeCarnaval, 1))) return comId("carnaval");
+  if (entre(somar(domingoDePascoa, -7), domingoDePascoa)) return comId("pascoa");
+  if (mes === 6) return comId("junina");
+  if (mes === 10 && dia >= 25) return comId("halloween");
+  if (mes === 12 && dia <= 26) return comId("natal");
+  if ((mes === 12 && dia >= 27) || (mes === 1 && dia <= 2)) return comId("anoNovo");
+  return null;
+}
+
+/// O que o franguinho veste: o acessório escolhido, se a conquista dele ainda
+/// vale; senão o da temporada; senão nada.
+export function acessorioVisivel(registros, escolhido, agora = new Date()) {
+  const liberados = new Set(conquistas(registros, agora).filter((c) => c.ok).map((c) => c.acessorio));
+  if (escolhido && liberados.has(escolhido)) return escolhido;
+  return temporada(agora)?.acessorio ?? "";
+}

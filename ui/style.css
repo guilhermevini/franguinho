@@ -439,9 +439,18 @@ kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px so
 .mascote[data-acessorio="chapeu"] .chapeu,
 .mascote[data-acessorio="oculos"] .oculos,
 .mascote[data-acessorio="laco"] .laco,
-.mascote[data-acessorio="coroa"] .coroa { display: inline; }
+.mascote[data-acessorio="coroa"] .coroa,
+.mascote[data-acessorio="gorro"] .gorro,
+.mascote[data-acessorio="palha"] .palha,
+.mascote[data-acessorio="bruxa"] .bruxa,
+.mascote[data-acessorio="orelhas"] .orelhas,
+.mascote[data-acessorio="mascara"] .mascara { display: inline; }
 .mascote[data-acessorio="chapeu"] .crista,
-.mascote[data-acessorio="coroa"] .crista { display: none; }
+.mascote[data-acessorio="coroa"] .crista,
+.mascote[data-acessorio="gorro"] .crista,
+.mascote[data-acessorio="palha"] .crista,
+.mascote[data-acessorio="bruxa"] .crista,
+.mascote[data-acessorio="orelhas"] .crista { display: none; }
 
 /* ---------- Ninho de hoje ---------- */
 

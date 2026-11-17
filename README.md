@@ -73,6 +73,13 @@ Dez conquistas (primeiro ovo, foco de 90 min, madrugador, coruja, maratona…) s
 dos registros; quatro delas liberam acessórios pro franguinho — chapéu de festa, óculos escuros, laço
 e coroa. Clique numa conquista feita para vestir.
 
+## Franguinho sazonal
+
+Em datas especiais o franguinho se veste sozinho e muda as falas: 🎭 Carnaval (máscara), 🐣 Páscoa
+(orelhas de coelho), 🌽 festa junina (chapéu de palha), 🎃 Halloween (chapéu de bruxa), 🎅 Natal
+(gorro) e 🎆 ano novo (chapéu de festa). Carnaval e Páscoa são calculados todo ano. Um acessório
+escolhido nas conquistas tem prioridade sobre o da temporada.
+
 ## Resumo e correções
 
 - **Resumo:** horas por projeto de hoje ou da semana (a partir de segunda), em barrinhas.
