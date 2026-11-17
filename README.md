@@ -55,16 +55,25 @@ Clicar noutro projeto troca de tarefa; passe o mouse e clique no **×** para rem
 - **Bandeja / barra de menu:** mostra a tarefa atual, termina, começa qualquer projeto e abre a janela.
   No macOS, o tempo da tarefa aparece do lado do ícone. Fechar a janela só esconde — use **Sair** no menu.
 - **Atalho global `Ctrl+Alt+F`:** de qualquer app, termina a tarefa rodando ou abre o Franguinho
-  pronto pra digitar. Mude em `ATALHO`, no `src-tauri/src/sistema.rs`.
-- **Esqueceu ligado?** Depois de 3h seguidas (`ESQUECIDO_HORAS`), o franguinho reclama na janela e manda
+  pronto pra digitar. Dá pra trocar nas configurações.
+- **Esqueceu ligado?** Depois de 3h seguidas (ajustável), o franguinho reclama na janela e manda
   uma notificação do sistema — e de novo a cada hora a mais.
 
-- **Você voltou?** Se você some por 10 min (`AUSENTE_MIN`) — sem mexer no mouse/teclado ou com o
+- **Você voltou?** Se você some por 10 min (ajustável) — sem mexer no mouse/teclado ou com o
   computador dormindo — com uma tarefa rodando, ao voltar o franguinho pergunta se é pra descontar e
   continuar, terminar na hora em que você saiu ou manter tudo.
 - **Mini janela:** só o franguinho, a tarefa e o cronômetro, sem bordas e sempre por cima.
   Abra pelo botão **🪟 mini** da janela principal ou pelo menu da bandeja; arraste pra onde quiser.
 - **Uma cópia só:** abrir o app de novo só traz a janela que já está aberta.
+
+## Configurações
+
+No ⚙️ da janela principal: iniciar com o sistema, trocar o atalho global (clique no campo e aperte a
+combinação), as horas do aviso de tarefa esquecida e os minutos da ausência (0 desliga), e um botão
+pra abrir a pasta dos dados. Fica salvo em `config.json`, na pasta de dados.
+
+> "Iniciar com o sistema" registra o executável que está rodando. Ative pelo app instalado
+> (`cargo tauri build`), não pelo `cargo tauri dev`, senão o sistema vai abrir a versão de desenvolvimento.
 
 ## Ovos e conquistas
 
@@ -88,7 +97,7 @@ escolhido nas conquistas tem prioridade sobre o da temporada.
 
 ## Onde ficam os dados
 
-`registros.json` e `projetos.json`, na pasta de dados do sistema:
+`registros.json`, `projetos.json` e `config.json`, na pasta de dados do sistema:
 
 | Sistema | Pasta |
 |---|---|

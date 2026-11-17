@@ -198,3 +198,22 @@ export function acessorioVisivel(registros, escolhido, agora = new Date()) {
   if (escolhido && liberados.has(escolhido)) return escolhido;
   return temporada(agora)?.acessorio ?? "";
 }
+
+// ---------- Atalho ----------
+
+/// Converte um keydown no formato de atalho do Tauri ("Ctrl+Alt+F"), ou null
+/// enquanto a combinação não está completa. Precisa de Ctrl, Alt ou Cmd.
+export function atalhoDoEvento(e, mac = false) {
+  const tecla = /^Key[A-Z]$/.test(e.code) ? e.code.slice(3)
+    : /^Digit[0-9]$/.test(e.code) ? e.code.slice(5)
+    : /^F([1-9]|1[0-9]|2[0-4])$/.test(e.code) ? e.code
+    : e.code === "Space" ? "Space"
+    : null;
+  if (!tecla || !(e.ctrlKey || e.altKey || e.metaKey)) return null;
+  const mods = [];
+  if (e.ctrlKey) mods.push("Ctrl");
+  if (e.altKey) mods.push("Alt");
+  if (e.shiftKey) mods.push("Shift");
+  if (e.metaKey) mods.push(mac ? "Cmd" : "Super");
+  return [...mods, tecla].join("+");
+}

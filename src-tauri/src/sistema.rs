@@ -10,17 +10,9 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{TrayIcon, TrayIconBuilder},
 };
-use tauri_plugin_global_shortcut::ShortcutState;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_notification::NotificationExt;
 
-/// Começa/termina de qualquer lugar: termina a tarefa rodando ou abre a janela
-/// pronta pra digitar uma nova.
-pub const ATALHO: &str = "Ctrl+Alt+F";
-/// A partir de quantas horas seguidas o franguinho desconfia que você esqueceu.
-const ESQUECIDO_HORAS: i64 = 3;
-/// Sem mexer no mouse/teclado por esse tempo (ou com o computador dormindo),
-/// o franguinho pergunta o que fazer com o tempo ausente quando você voltar.
-const AUSENTE_MIN: i64 = 10;
 const INTERVALO: Duration = Duration::from_secs(15);
 const BANDEJA: &str = "franguinho";
 const MINI: &str = "mini";
@@ -166,10 +158,11 @@ fn atualizar_titulo(bandeja: &TrayIcon, estado: &Estado) {
     }
 }
 
-pub fn registrar_atalho(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+/// Instala o plugin de atalhos (o mesmo tratador vale pra qualquer atalho) e
+/// registra o das configurações.
+pub fn registrar_atalho(app: &AppHandle, atalho: &str) -> Result<(), Box<dyn std::error::Error>> {
     app.plugin(
         tauri_plugin_global_shortcut::Builder::new()
-            .with_shortcuts([ATALHO])?
             .with_handler(|app, _atalho, evento| {
                 if evento.state() == ShortcutState::Pressed {
                     alternar(app);
@@ -177,7 +170,32 @@ pub fn registrar_atalho(app: &AppHandle) -> Result<(), Box<dyn std::error::Error
             })
             .build(),
     )?;
+    app.global_shortcut().register(atalho)?;
     Ok(())
+}
+
+/// Troca o atalho global; se o novo não puder ser usado, volta pro antigo.
+pub fn trocar_atalho(app: &AppHandle, antigo: &str, novo: &str) -> Result<(), String> {
+    let atalhos = app.global_shortcut();
+    let _ = atalhos.unregister_all();
+    if atalhos.register(novo).is_err() {
+        let _ = atalhos.register(antigo);
+        return Err(format!("O atalho {novo} já está em uso por outro app."));
+    }
+    Ok(())
+}
+
+/// Enquanto você grava um atalho novo, o atual fica desligado — senão apertar a
+/// combinação de hoje terminaria a tarefa.
+pub fn suspender_atalho(app: &AppHandle, suspenso: bool) {
+    let atalhos = app.global_shortcut();
+    let _ = atalhos.unregister_all();
+    if !suspenso {
+        let atalho = app.state::<Franguinho>().config().atalho;
+        if let Err(e) = atalhos.register(atalho.as_str()) {
+            eprintln!("não consegui religar o atalho {atalho}: {e}");
+        }
+    }
 }
 
 fn alternar(app: &AppHandle) {
@@ -248,6 +266,7 @@ pub fn vigiar(app: AppHandle) {
                 dia_do_backup = agora.date_naive();
             }
             let estado = app.state::<Franguinho>().ler();
+            let config = app.state::<Franguinho>().config();
             if let Some(bandeja) = app.tray_by_id(BANDEJA) {
                 atualizar_titulo(&bandeja, &estado);
             }
@@ -258,13 +277,15 @@ pub fn vigiar(app: AppHandle) {
             };
 
             // Ausência: ocioso no sistema, ou o computador dormiu (o laço parou).
-            let limite = TimeDelta::minutes(AUSENTE_MIN);
+            let limite = TimeDelta::minutes(config.ausente_min.into());
             let ocioso = user_idle::UserIdle::get_time()
                 .map(|t| TimeDelta::seconds(t.as_seconds() as i64))
                 .unwrap_or_default();
             let pulo = agora - ultima_volta;
             ultima_volta = agora;
-            if pulo > limite {
+            if config.ausente_min == 0 {
+                ausente_desde = None; // desligado nas configurações
+            } else if pulo > limite {
                 let saiu = agora - pulo;
                 ausente_desde = Some(ausente_desde.map_or(saiu, |d| d.min(saiu)));
             } else if ocioso >= limite && ausente_desde.is_none() {
@@ -276,7 +297,7 @@ pub fn vigiar(app: AppHandle) {
                 ausente_desde = None;
                 let desde = desde.max(r.inicio);
                 let minutos = (agora - desde).num_minutes();
-                if minutos >= AUSENTE_MIN {
+                if minutos >= config.ausente_min.into() {
                     mostrar_janela(&app);
                     let _ = app.emit(
                         "ausencia",
@@ -289,12 +310,13 @@ pub fn vigiar(app: AppHandle) {
                 }
             }
 
-            // Esqueceu ligado: uma notificação por hora depois de ESQUECIDO_HORAS.
+            // Esqueceu ligado: uma notificação por hora depois do limite (0 desliga).
+            let esquecido = i64::from(config.esquecido_horas);
             let horas = r.duracao().num_hours();
             let ja_avisado = avisado
                 .filter(|(inicio, _)| *inicio == r.inicio)
                 .map_or(0, |(_, h)| h);
-            if horas >= ESQUECIDO_HORAS && horas > ja_avisado {
+            if esquecido > 0 && horas >= esquecido && horas > ja_avisado {
                 let _ = app
                     .notification()
                     .builder()

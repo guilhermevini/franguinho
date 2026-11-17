@@ -1,5 +1,5 @@
 import {
-  SEM_PROJETO, acessorioVisivel, comHora, conquistas as calcularConquistas, curto, duracao,
+  SEM_PROJETO, acessorioVisivel, atalhoDoEvento, comHora, conquistas as calcularConquistas, curto, duracao,
   horaCampo, nomeDoDia, relogio, resumo, sequencias as calcularSequencias, temporada,
 } from "./logica.js";
 import { svgMascote } from "./mascote.js";
@@ -17,7 +17,6 @@ const FRASES = [
   "Tá indo bem, hein!",
   "Uma bicadinha de cada vez.",
 ];
-const ESQUECIDO_MS = 3 * 3600 * 1000; // mesmo limite do aviso no Rust
 
 let estado = { registros: [], projetos: [] };
 let comemorandoAte = 0;
@@ -29,6 +28,8 @@ let periodo = "hoje";
 let ausencia = null; // { id, desde, minutos } enquanto o diálogo de "você voltou" está aberto
 let conquistasFeitas = null; // ids já desbloqueados, pra comemorar só as novas
 let acessorio = lerPreferencia("acessorio");
+let preferencias = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10 };
+const MAC = /Mac/i.test(navigator.platform);
 
 const ACESSORIOS = { chapeu: "chapéu de festa", oculos: "óculos escuros", laco: "laço", coroa: "coroa" };
 
@@ -126,8 +127,88 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && ausencia) resolverAusencia(null);
 });
 
+// ---------- Configurações ----------
+
+function aplicarPreferencias(p) {
+  preferencias = p;
+  $("atalho").textContent = p.atalho;
+  atualizarFala();
+}
+
+$("botao-config").addEventListener("click", async () => {
+  try {
+    aplicarPreferencias(await invoke("preferencias"));
+  } catch (erro) {
+    avisar(String(erro));
+    return;
+  }
+  $("cfg-autostart").checked = preferencias.iniciar_com_sistema;
+  $("cfg-atalho").value = preferencias.atalho;
+  $("cfg-esquecido").value = preferencias.esquecido_horas;
+  $("cfg-ausente").value = preferencias.ausente_min;
+  $("cfg-caminho").textContent = preferencias.pasta_dados;
+  $("modal-config").hidden = false;
+});
+
+function fecharConfig() {
+  $("modal-config").hidden = true;
+}
+
+const campoAtalho = $("cfg-atalho");
+campoAtalho.addEventListener("focus", () => {
+  campoAtalho.classList.add("gravando");
+  invoke("suspender_atalho", { suspenso: true }).catch(() => {});
+});
+campoAtalho.addEventListener("blur", () => {
+  campoAtalho.classList.remove("gravando");
+  invoke("suspender_atalho", { suspenso: false }).catch(() => {});
+});
+campoAtalho.addEventListener("keydown", (e) => {
+  if (e.key === "Tab") return;
+  e.preventDefault();
+  if (e.key === "Escape") {
+    campoAtalho.value = preferencias.atalho;
+    campoAtalho.blur();
+    return;
+  }
+  const atalho = atalhoDoEvento(e, MAC);
+  if (atalho) {
+    campoAtalho.value = atalho;
+    campoAtalho.blur();
+  }
+});
+
+$("cfg-pasta").addEventListener("click", () => {
+  invoke("abrir_pasta_dados").catch((e) => avisar(String(e)));
+});
+$("cfg-cancelar").addEventListener("click", fecharConfig);
+$("modal-config").addEventListener("click", (e) => {
+  if (e.target === $("modal-config")) fecharConfig();
+});
+$("form-config").addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && e.target !== campoAtalho) fecharConfig();
+});
+$("form-config").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    aplicarPreferencias(await invoke("salvar_preferencias", {
+      config: {
+        atalho: campoAtalho.value,
+        esquecido_horas: Number($("cfg-esquecido").value),
+        ausente_min: Number($("cfg-ausente").value),
+      },
+      iniciarComSistema: $("cfg-autostart").checked,
+    }));
+    fecharConfig();
+    avisar("Configurações salvas! 🐔");
+  } catch (erro) {
+    avisar(String(erro));
+  }
+});
+
 if (tauri) {
   tauri.event.listen("estado", (e) => aplicar(e.payload));
+  tauri.event.listen("preferencias", (e) => aplicarPreferencias(e.payload));
   tauri.event.listen("ausencia", (e) => mostrarAusencia(e.payload));
   tauri.event.listen("aviso", (e) => avisar(String(e.payload)));
   tauri.event.listen("focar-campo", () => $("campo-tarefa").focus());
@@ -151,7 +232,8 @@ function emAndamento() {
 
 function esquecido() {
   const r = emAndamento();
-  return !!r && duracao(r) >= ESQUECIDO_MS;
+  const limite = preferencias.esquecido_horas * 3600000;
+  return !!r && limite > 0 && duracao(r) >= limite;
 }
 
 function humor() {
@@ -530,6 +612,8 @@ function imitacaoDoBackend() {
   const e = { registros: [], projetos: ["Trabalho", "Estudos", "Casa"] };
   const limpo = (t) => (t ?? "").trim() || null;
   const copia = () => structuredClone(e);
+  const prefs = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10, iniciar_com_sistema: false,
+    pasta_dados: "~/Library/Application Support/franguinho" };
   const novoId = () => Math.max(0, ...e.registros.map((r) => r.id)) + 1;
   const posicao = (id) => {
     const i = e.registros.findIndex((r) => r.id === id);
@@ -574,7 +658,14 @@ function imitacaoDoBackend() {
     },
     remover_projeto({ nome }) { e.projetos = e.projetos.filter((p) => p !== nome); return copia(); },
     exportar_csv: () => "(modo navegador: nada foi exportado)",
-    atalho: () => "Ctrl+Alt+F",
+    preferencias: () => ({ ...prefs }),
+    salvar_preferencias({ config, iniciarComSistema }) {
+      if (!/^(.+\+)+.+$/.test(config.atalho)) throw `Não entendi o atalho "${config.atalho}".`;
+      Object.assign(prefs, config, { iniciar_com_sistema: iniciarComSistema });
+      return { ...prefs };
+    },
+    suspender_atalho: () => {},
+    abrir_pasta_dados: () => { throw "(modo navegador: não há pasta pra abrir)"; },
   };
   // No navegador, dá pra testar o diálogo com simularAusencia(25) no console.
   window.simularAusencia = (minutos) =>
@@ -585,7 +676,7 @@ function imitacaoDoBackend() {
 // ---------- Início ----------
 
 chamar("carregar");
-invoke("atalho").then((a) => ($("atalho").textContent = a));
+invoke("preferencias").then(aplicarPreferencias).catch(() => {});
 setInterval(() => {
   const r = emAndamento();
   if (r) $("relogio").textContent = relogio(duracao(r));

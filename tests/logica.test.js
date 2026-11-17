@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  acessorioVisivel, comHora, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
+  acessorioVisivel, atalhoDoEvento, comHora, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
   relogio, resumo, sequencias, temporada,
 } from "../ui/logica.js";
 
@@ -127,4 +127,17 @@ test("acessório escolhido vence a temporada, se a conquista ainda vale", () => 
   assert.equal(acessorioVisivel(longa, "oculos", natal), "oculos");
   assert.equal(acessorioVisivel([], "oculos", natal), "gorro"); // sem a conquista, volta pro gorro
   assert.equal(acessorioVisivel([], "", new Date(2026, 7, 10)), "");
+});
+
+test("atalhoDoEvento monta a combinação e ignora teclas soltas", () => {
+  const ev = (code, mods = {}) => ({ code, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...mods });
+  assert.equal(atalhoDoEvento(ev("KeyF", { ctrlKey: true, altKey: true })), "Ctrl+Alt+F");
+  assert.equal(atalhoDoEvento(ev("KeyT", { metaKey: true, shiftKey: true }), true), "Shift+Cmd+T");
+  assert.equal(atalhoDoEvento(ev("KeyT", { metaKey: true }), false), "Super+T");
+  assert.equal(atalhoDoEvento(ev("Digit1", { altKey: true })), "Alt+1");
+  assert.equal(atalhoDoEvento(ev("F5", { ctrlKey: true })), "Ctrl+F5");
+  assert.equal(atalhoDoEvento(ev("Space", { ctrlKey: true })), "Ctrl+Space");
+  assert.equal(atalhoDoEvento(ev("KeyF")), null, "sem modificador");
+  assert.equal(atalhoDoEvento(ev("KeyF", { shiftKey: true })), null, "só Shift não basta");
+  assert.equal(atalhoDoEvento(ev("ControlLeft", { ctrlKey: true })), null, "só o modificador");
 });

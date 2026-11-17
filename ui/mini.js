@@ -8,10 +8,10 @@ const invoke = tauri?.core.invoke ?? (async (comando) => comando === "carregar"
       inicio: new Date(Date.now() - 754000).toISOString(), fim: null }] }
   : undefined);
 
-const ESQUECIDO_MS = 3 * 3600 * 1000;
 const $ = (id) => document.getElementById(id);
 let estado = { registros: [], projetos: [] };
 let comemorandoAte = 0;
+let esquecidoMs = 3 * 3600 * 1000; // atualizado pelas configurações
 
 $("mascote").innerHTML = svgMascote;
 
@@ -38,7 +38,7 @@ function render() {
   m.dataset.acessorio = acessorioVisivel(estado.registros, acessorio);
 
   document.body.classList.toggle("ocioso", !r);
-  document.body.classList.toggle("alerta", !!r && duracao(r) >= ESQUECIDO_MS);
+  document.body.classList.toggle("alerta", !!r && esquecidoMs > 0 && duracao(r) >= esquecidoMs);
   $("tarefa").textContent = r ? r.tarefa : "Zzz...";
   $("tarefa").title = r ? `${r.projeto ? r.projeto + " · " : ""}${r.tarefa}` : "";
   $("relogio").textContent = r ? relogio(duracao(r)) : "clique pra começar";
@@ -62,6 +62,12 @@ $("fechar").addEventListener("click", () => chamar("alternar_mini"));
 
 if (tauri) {
   tauri.event.listen("estado", (e) => aplicar(e.payload));
+  const usarPreferencias = (p) => {
+    esquecidoMs = p.esquecido_horas * 3600000;
+    render();
+  };
+  invoke("preferencias").then(usarPreferencias).catch(() => {});
+  tauri.event.listen("preferencias", (e) => usarPreferencias(e.payload));
   // Trocar o acessório na janela principal também troca aqui.
   window.addEventListener("storage", render);
 }

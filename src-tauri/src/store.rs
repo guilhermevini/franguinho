@@ -1,6 +1,9 @@
 use chrono::{DateTime, Local, NaiveDate, TimeDelta};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::{fs, io, path::PathBuf};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Registro {
@@ -45,6 +48,10 @@ impl Store {
         Self { pasta }
     }
 
+    pub fn pasta(&self) -> &Path {
+        &self.pasta
+    }
+
     pub fn carregar(&self) -> Vec<Registro> {
         self.ler("registros.json")
     }
@@ -59,6 +66,14 @@ impl Store {
 
     pub fn salvar_projetos(&self, projetos: &[String]) -> io::Result<()> {
         self.gravar("projetos.json", projetos)
+    }
+
+    pub fn carregar_config(&self) -> crate::config::Config {
+        self.ler("config.json")
+    }
+
+    pub fn salvar_config(&self, config: &crate::config::Config) -> io::Result<()> {
+        self.gravar("config.json", config)
     }
 
     fn ler<T: DeserializeOwned + Default>(&self, nome: &str) -> T {

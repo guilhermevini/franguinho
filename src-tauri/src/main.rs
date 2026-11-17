@@ -1,18 +1,33 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // sem console no Windows
 
+mod config;
 mod estado;
 mod sistema;
 mod store;
 
 use chrono::{DateTime, Local};
+use config::Config;
 use estado::Estado;
+use serde::Serialize;
 use std::sync::{Mutex, MutexGuard};
 use store::Store;
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_opener::OpenerExt;
 
 pub struct Franguinho {
     store: Store,
     estado: Mutex<Estado>,
+    config: Mutex<Config>,
+}
+
+/// O que a tela de configurações mostra: o config.json e o que mora no sistema.
+#[derive(Clone, Serialize)]
+struct Preferencias {
+    #[serde(flatten)]
+    config: Config,
+    iniciar_com_sistema: bool,
+    pasta_dados: String,
 }
 
 type Resultado = Result<Estado, String>;
@@ -24,6 +39,13 @@ impl Franguinho {
 
     pub fn ler(&self) -> Estado {
         self.trava().clone()
+    }
+
+    pub fn config(&self) -> Config {
+        self.config
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Aplica uma mudança, salva e avisa a janela e a bandeja.
@@ -157,9 +179,59 @@ fn abrir_janela(app: AppHandle) {
     let _ = app.emit("focar-campo", ());
 }
 
+fn preferencias_de(app: &AppHandle, f: &Franguinho) -> Preferencias {
+    Preferencias {
+        config: f.config(),
+        iniciar_com_sistema: app.autolaunch().is_enabled().unwrap_or(false),
+        pasta_dados: f.store.pasta().display().to_string(),
+    }
+}
+
 #[tauri::command]
-fn atalho() -> &'static str {
-    sistema::ATALHO
+fn preferencias(app: AppHandle, f: State<Franguinho>) -> Preferencias {
+    preferencias_de(&app, &f)
+}
+
+#[tauri::command]
+fn salvar_preferencias(
+    app: AppHandle,
+    f: State<Franguinho>,
+    config: Config,
+    iniciar_com_sistema: bool,
+) -> Result<Preferencias, String> {
+    let novo = config.validado()?;
+    let antigo = f.config();
+    if novo.atalho != antigo.atalho {
+        sistema::trocar_atalho(&app, &antigo.atalho, &novo.atalho)?;
+    }
+    let autostart = app.autolaunch();
+    if autostart.is_enabled().unwrap_or(false) != iniciar_com_sistema {
+        let mudou = if iniciar_com_sistema {
+            autostart.enable()
+        } else {
+            autostart.disable()
+        };
+        mudou.map_err(|e| format!("Não consegui mudar o iniciar com o sistema: {e}"))?;
+    }
+    f.store
+        .salvar_config(&novo)
+        .map_err(|e| format!("Ih, não consegui salvar as configurações: {e}"))?;
+    *f.config.lock().unwrap_or_else(|e| e.into_inner()) = novo;
+    let prefs = preferencias_de(&app, &f);
+    let _ = app.emit("preferencias", &prefs);
+    Ok(prefs)
+}
+
+#[tauri::command]
+fn suspender_atalho(app: AppHandle, suspenso: bool) {
+    sistema::suspender_atalho(&app, suspenso);
+}
+
+#[tauri::command]
+fn abrir_pasta_dados(app: AppHandle, f: State<Franguinho>) -> Result<(), String> {
+    app.opener()
+        .open_path(f.store.pasta().display().to_string(), None::<&str>)
+        .map_err(|e| format!("Não consegui abrir a pasta: {e}"))
 }
 
 fn main() {
@@ -169,6 +241,8 @@ fn main() {
         eprintln!("não consegui fazer o backup do dia: {e}");
     }
     let (estado, corrigiu) = Estado::novo(store.carregar(), store.carregar_projetos());
+    let config = store.carregar_config();
+    let atalho = config.atalho.clone();
     if corrigiu {
         // Grava os ids novos pra eles continuarem os mesmos na próxima vez.
         if let Err(e) = store.salvar(&estado.registros) {
@@ -183,16 +257,22 @@ fn main() {
             sistema::mostrar_janela(app);
         }))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(Franguinho {
             store,
             estado: Mutex::new(estado),
+            config: Mutex::new(config),
         })
-        .setup(|app| {
+        .setup(move |app| {
             let app = app.handle();
             sistema::criar_bandeja(app)?;
-            if let Err(e) = sistema::registrar_atalho(app) {
+            if let Err(e) = sistema::registrar_atalho(app, &atalho) {
                 // Outro app pode já usar a combinação; o Franguinho segue sem ela.
-                eprintln!("não consegui registrar o atalho {}: {e}", sistema::ATALHO);
+                eprintln!("não consegui registrar o atalho {atalho}: {e}");
             }
             sistema::vigiar(app.clone());
             Ok(())
@@ -216,7 +296,10 @@ fn main() {
             exportar_csv,
             alternar_mini,
             abrir_janela,
-            atalho,
+            preferencias,
+            salvar_preferencias,
+            suspender_atalho,
+            abrir_pasta_dados,
         ])
         .build(tauri::generate_context!())
         .expect("erro ao abrir o Franguinho")

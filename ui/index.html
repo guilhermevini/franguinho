@@ -10,6 +10,7 @@
   <main class="app">
     <section class="palco">
       <button class="mascote dormindo" id="mascote" type="button" aria-label="Franguinho"></button>
+      <button class="link botao-config" id="botao-config" type="button" title="Configurações">⚙️</button>
       <button class="link botao-mini" id="botao-mini" type="button" title="Mini janela sempre por cima">🪟 mini</button>
       <p class="balao" id="fala">Zzz... me dá uma tarefa pra ciscar?</p>
       <div class="ninho-hoje" id="ninho-hoje"></div>
@@ -81,6 +82,44 @@
         <button class="pequeno" id="ausencia-manter" type="button">Foi trabalho, manter</button>
       </div>
     </div>
+  </div>
+
+  <div class="fundo-modal" id="modal-config" hidden>
+    <form class="modal config" id="form-config" role="dialog" aria-modal="true" aria-labelledby="config-titulo">
+      <h2 id="config-titulo">Configurações ⚙️</h2>
+
+      <label class="linha-config">
+        <span>Iniciar com o sistema</span>
+        <input type="checkbox" id="cfg-autostart" class="interruptor">
+      </label>
+
+      <label class="campo-config">
+        <span>Atalho global</span>
+        <input type="text" id="cfg-atalho" readonly placeholder="clique e aperte a combinação">
+      </label>
+      <p class="dica">Termina a tarefa ou abre o Franguinho, de qualquer app. Clique no campo e aperte a combinação nova.</p>
+
+      <label class="linha-config">
+        <span>Avisar tarefa esquecida após</span>
+        <span class="numero"><input type="number" id="cfg-esquecido" min="0" max="24" required> h</span>
+      </label>
+      <label class="linha-config">
+        <span>Perguntar sobre ausência após</span>
+        <span class="numero"><input type="number" id="cfg-ausente" min="0" max="240" required> min</span>
+      </label>
+      <p class="dica">Coloque 0 pra desligar.</p>
+
+      <div class="linha-config">
+        <span>Seus dados e backups</span>
+        <button type="button" class="pequeno" id="cfg-pasta">📂 Abrir pasta</button>
+      </div>
+      <p class="dica caminho" id="cfg-caminho"></p>
+
+      <div class="acoes-config">
+        <button type="button" class="pequeno" id="cfg-cancelar">Cancelar</button>
+        <button type="submit" class="pequeno primario">Salvar</button>
+      </div>
+    </form>
   </div>
 
   <div class="aviso" id="aviso" role="status" hidden></div>
