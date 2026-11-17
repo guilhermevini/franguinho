@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // sem console no Windows
 
+mod atualizacao;
 mod config;
 mod estado;
 mod sistema;
@@ -223,6 +224,21 @@ fn salvar_preferencias(
 }
 
 #[tauri::command]
+fn versao(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+#[tauri::command]
+async fn procurar_atualizacao(app: AppHandle) -> Result<Option<atualizacao::Novidade>, String> {
+    atualizacao::procurar(&app).await
+}
+
+#[tauri::command]
+async fn instalar_atualizacao(app: AppHandle) -> Result<(), String> {
+    atualizacao::instalar(&app).await
+}
+
+#[tauri::command]
 fn suspender_atalho(app: AppHandle, suspenso: bool) {
     sistema::suspender_atalho(&app, suspenso);
 }
@@ -258,6 +274,7 @@ fn main() {
         }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -275,6 +292,7 @@ fn main() {
                 eprintln!("não consegui registrar o atalho {atalho}: {e}");
             }
             sistema::vigiar(app.clone());
+            atualizacao::vigiar(app.clone());
             Ok(())
         })
         .on_window_event(|janela, evento| {
@@ -300,6 +318,9 @@ fn main() {
             salvar_preferencias,
             suspender_atalho,
             abrir_pasta_dados,
+            versao,
+            procurar_atualizacao,
+            instalar_atualizacao,
         ])
         .build(tauri::generate_context!())
         .expect("erro ao abrir o Franguinho")

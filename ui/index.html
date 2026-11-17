@@ -8,6 +8,11 @@
 </head>
 <body>
   <main class="app">
+    <div class="faixa-atualizacao" id="faixa-atualizacao" hidden>
+      <span id="faixa-texto">🐣 Versão nova disponível!</span>
+      <button class="pequeno primario" id="botao-atualizar" type="button">Atualizar</button>
+    </div>
+
     <section class="palco">
       <button class="mascote dormindo" id="mascote" type="button" aria-label="Franguinho"></button>
       <button class="link botao-config" id="botao-config" type="button" title="Configurações">⚙️</button>
@@ -114,6 +119,11 @@
         <button type="button" class="pequeno" id="cfg-pasta">📂 Abrir pasta</button>
       </div>
       <p class="dica caminho" id="cfg-caminho"></p>
+
+      <div class="linha-config">
+        <span>Franguinho <span id="cfg-versao" class="versao"></span></span>
+        <button type="button" class="pequeno" id="cfg-procurar">🔄 Procurar atualização</button>
+      </div>
 
       <div class="acoes-config">
         <button type="button" class="pequeno" id="cfg-cancelar">Cancelar</button>

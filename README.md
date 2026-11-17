@@ -30,6 +30,24 @@ No Linux, instale antes as dependências do WebKitGTK
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxss-dev
 ```
 
+### Lançando uma versão
+
+1. Suba a versão em `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml` (ex.: `0.2.0`) e faça o commit.
+2. `git tag v0.2.0 && git push --tags`
+3. O workflow **Release** gera os instaladores de macOS (Apple Silicon e Intel), Windows e Linux numa
+   release em **rascunho**. Confira e clique em **Publish**.
+4. Quem já tem o app vê a faixa "versão nova disponível" (ele procura ao abrir e a cada 6h) e
+   atualiza com um clique. O pacote só é aceito se a assinatura bater com a chave pública do
+   `tauri.conf.json`.
+
+A chave privada que assina as atualizações fica em `~/.tauri/franguinho.key` (senha em
+`~/.tauri/franguinho.senha`) e nos segredos `TAURI_SIGNING_PRIVATE_KEY` e
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` do repositório. **Guarde uma cópia num lugar seguro:** sem ela
+não dá pra publicar atualizações que os apps instalados aceitem.
+
+Os instaladores não são assinados pela Apple nem pela Microsoft (custa caro): na primeira vez o macOS
+pede "botão direito → Abrir" e o Windows mostra o SmartScreen.
+
 ### Testes
 
 ```sh

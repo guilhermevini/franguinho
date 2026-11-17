@@ -603,3 +603,21 @@ kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px so
 .interruptor:checked { background: var(--verde); }
 .interruptor:checked::after { transform: translateX(20px); }
 .interruptor:focus-visible { outline: 3px solid var(--tinta); outline-offset: 2px; }
+
+/* ---------- Atualização ---------- */
+
+.faixa-atualizacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: color-mix(in srgb, var(--verde) 18%, var(--cartao));
+  border: 2.5px solid var(--verde);
+  border-radius: 16px;
+  padding: 8px 10px 8px 14px;
+  font-weight: 800;
+  animation: pulo-modal 0.35s cubic-bezier(.2, 1.4, .5, 1);
+}
+.faixa-atualizacao .pequeno.primario { background: var(--verde); border-color: var(--verde); }
+.faixa-atualizacao .pequeno:disabled { opacity: 0.7; cursor: wait; }
+.versao { font-weight: 700; color: var(--tinta-suave); }

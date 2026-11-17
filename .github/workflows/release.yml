@@ -1,0 +1,77 @@
+name: Release
+
+# Envie uma tag (ex.: git tag v0.2.0 && git push --tags) pra gerar os
+# instaladores. A release nasce como rascunho: confira e publique no GitHub.
+# Só depois de publicada o app dos usuários enxerga a atualização.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  instaladores:
+    name: Instalador (${{ matrix.nome }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: macOS Apple Silicon
+            sistema: macos-latest
+            args: --target aarch64-apple-darwin
+          - nome: macOS Intel
+            sistema: macos-latest
+            args: --target x86_64-apple-darwin
+          - nome: Linux
+            sistema: ubuntu-22.04
+            args: ""
+          - nome: Windows
+            sistema: windows-latest
+            args: ""
+    runs-on: ${{ matrix.sistema }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Dependências do Tauri no Linux
+        if: startsWith(matrix.sistema, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            patchelf libxdo-dev libssl-dev libxss-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ startsWith(matrix.sistema, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tauriScript: npx --yes @tauri-apps/cli@2
+          args: ${{ matrix.args }}
+          tagName: v__VERSION__
+          releaseName: Franguinho v__VERSION__
+          releaseDraft: true
+          prerelease: false
+          releaseBody: |
+            🐔 Baixe o instalador do seu sistema em **Assets**, logo abaixo.
+
+            - **macOS:** `.dmg` (`aarch64` = Apple Silicon, `x64` = Intel). Na primeira vez, clique com o
+              botão direito no app e escolha **Abrir** (o app não é assinado pela Apple).
+            - **Windows:** `.msi` ou `-setup.exe`. Se o SmartScreen reclamar, clique em
+              **Mais informações → Executar assim mesmo**.
+            - **Linux:** `.AppImage` (atualiza sozinho), `.deb` ou `.rpm`.
+
+            Quem já tem o Franguinho instalado recebe esta versão pelo aviso de atualização do próprio app.

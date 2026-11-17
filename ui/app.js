@@ -147,6 +147,7 @@ $("botao-config").addEventListener("click", async () => {
   $("cfg-esquecido").value = preferencias.esquecido_horas;
   $("cfg-ausente").value = preferencias.ausente_min;
   $("cfg-caminho").textContent = preferencias.pasta_dados;
+  invoke("versao").then((v) => ($("cfg-versao").textContent = `v${v}`)).catch(() => {});
   $("modal-config").hidden = false;
 });
 
@@ -206,7 +207,46 @@ $("form-config").addEventListener("submit", async (e) => {
   }
 });
 
+// ---------- Atualização ----------
+
+function mostrarNovidade(novidade) {
+  $("faixa-texto").textContent = `🐣 Versão ${novidade.versao} disponível!`;
+  $("faixa-atualizacao").hidden = false;
+}
+
+$("botao-atualizar").addEventListener("click", async () => {
+  const botao = $("botao-atualizar");
+  botao.disabled = true;
+  botao.textContent = "Baixando...";
+  try {
+    await invoke("instalar_atualizacao"); // se der certo, o app reinicia
+  } catch (erro) {
+    avisar(String(erro));
+    botao.disabled = false;
+    botao.textContent = "Atualizar";
+  }
+});
+
+$("cfg-procurar").addEventListener("click", async () => {
+  const botao = $("cfg-procurar");
+  botao.disabled = true;
+  try {
+    const novidade = await invoke("procurar_atualizacao");
+    if (novidade) {
+      mostrarNovidade(novidade);
+      fecharConfig();
+    } else {
+      avisar("Você já está na versão mais nova. 🐔");
+    }
+  } catch (erro) {
+    avisar(String(erro));
+  } finally {
+    botao.disabled = false;
+  }
+});
+
 if (tauri) {
+  tauri.event.listen("atualizacao", (e) => mostrarNovidade(e.payload));
   tauri.event.listen("estado", (e) => aplicar(e.payload));
   tauri.event.listen("preferencias", (e) => aplicarPreferencias(e.payload));
   tauri.event.listen("ausencia", (e) => mostrarAusencia(e.payload));
@@ -665,6 +705,9 @@ function imitacaoDoBackend() {
       return { ...prefs };
     },
     suspender_atalho: () => {},
+    versao: () => "0.1.0",
+    procurar_atualizacao: () => ({ versao: "0.2.0", notas: null }),
+    instalar_atualizacao: () => { throw "(modo navegador: nada pra instalar)"; },
     abrir_pasta_dados: () => { throw "(modo navegador: não há pasta pra abrir)"; },
   };
   // No navegador, dá pra testar o diálogo com simularAusencia(25) no console.
