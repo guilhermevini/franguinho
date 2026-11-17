@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Franguinho</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section class="palco">
+      <button class="mascote dormindo" id="mascote" type="button" aria-label="Franguinho">
+        <svg viewBox="0 0 200 165" aria-hidden="true">
+          <ellipse class="sombra" cx="90" cy="152" rx="40" ry="7"/>
+          <g class="pernas">
+            <path d="M80 122 V148 M80 148 h10 M100 122 V148 M100 148 h10"/>
+          </g>
+          <g class="corpo">
+            <g class="crista">
+              <circle cx="79" cy="46" r="9"/>
+              <circle cx="90" cy="39" r="11"/>
+              <circle cx="101" cy="46" r="9"/>
+            </g>
+            <circle class="pele" cx="90" cy="92" r="46"/>
+            <ellipse class="barriga" cx="84" cy="106" rx="27" ry="19"/>
+            <ellipse class="asa" cx="68" cy="99" rx="18" ry="13"/>
+            <circle class="bochecha" cx="117" cy="98" r="7"/>
+            <g class="olho olho-aberto">
+              <circle cx="108" cy="80" r="6.5"/>
+              <circle class="brilho" cx="110.5" cy="77.5" r="2"/>
+            </g>
+            <path class="olho olho-fechado" d="M101 81 q7 5 14 0"/>
+            <path class="olho olho-feliz" d="M101 83 l7 -7 l7 7"/>
+            <path class="bico" d="M132 84 L153 93 L132 102 Z"/>
+          </g>
+          <g class="milho">
+            <circle cx="140" cy="149" r="3.5"/>
+            <circle cx="151" cy="151" r="3.5"/>
+            <circle cx="160" cy="148" r="3.5"/>
+          </g>
+          <g class="zzz">
+            <text x="140" y="56">z</text>
+            <text x="140" y="56">z</text>
+            <text x="140" y="56">z</text>
+          </g>
+          <ellipse class="ovo" cx="168" cy="134" rx="13" ry="17"/>
+        </svg>
+      </button>
+      <p class="balao" id="fala">Zzz... me dá uma tarefa pra ciscar?</p>
+    </section>
+
+    <section class="cartao" id="cartao-tarefa">
+      <form id="form-nova" class="nova">
+        <label for="campo-tarefa">O que vamos fazer?</label>
+        <input id="campo-tarefa" type="text" autocomplete="off"
+               placeholder="ex.: revisar o relatório">
+        <button class="botao comecar" type="submit">🐣 Começar</button>
+      </form>
+
+      <div id="rodando" class="rodando" hidden>
+        <span class="etiqueta" id="rodando-projeto"></span>
+        <h2 id="rodando-tarefa"></h2>
+        <button class="desde" id="rodando-desde" type="button" title="Ajustar o horário de início"></button>
+        <div class="editar-inicio" id="editar-inicio" hidden></div>
+        <p class="relogio" id="relogio">00:00:00</p>
+        <button class="botao terminar" id="botao-terminar" type="button">🏁 Terminar</button>
+      </div>
+    </section>
+
+    <section class="bloco">
+      <h3>Projetos</h3>
+      <p class="dica" id="dica-projetos">Um clique começa. Se tiver algo digitado acima, vira a descrição da tarefa.</p>
+      <div class="chips" id="projetos"></div>
+    </section>
+
+    <section class="bloco">
+      <div class="titulo-linha">
+        <h3>Resumo</h3>
+        <div class="abas" id="abas-resumo">
+          <button type="button" data-periodo="hoje">Hoje</button>
+          <button type="button" data-periodo="semana">Semana</button>
+        </div>
+      </div>
+      <div class="cartao resumo" id="resumo"></div>
+    </section>
+
+    <section class="bloco historico">
+      <div class="titulo-linha">
+        <h3>Ninho de tarefas</h3>
+        <button class="link" id="botao-csv" type="button" title="Exporta tudo para registros.csv">📄 Exportar CSV</button>
+      </div>
+      <p class="dica">Clique numa tarefa para corrigir nome, projeto ou horários.</p>
+      <div id="historico"></div>
+    </section>
+
+    <p class="rodape">⌨️ <kbd id="atalho">Ctrl+Alt+F</kbd> termina a tarefa ou abre o Franguinho, de qualquer app.</p>
+  </main>
+
+  <div class="aviso" id="aviso" role="status" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
