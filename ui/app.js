@@ -1,8 +1,9 @@
 import {
   acessorioVisivel, atalhoDoEvento, comHora, mapaDoAno, conquistas as calcularConquistas, curto, duracao,
-  horaCampo, nomeDoDia, recentes, relatorioSemanal, relogio, resumo, sugestoes, sequencias as calcularSequencias, temporada,
+  horaCampo, nomeDoDia, recentes, relatorioSemanal, relogio, resumo, sonsDaMudanca, sugestoes, sequencias as calcularSequencias, temporada,
 } from "./logica.js";
 import { svgMascote } from "./mascote.js";
+import { tocar } from "./sons.js";
 
 // Dentro do Tauri, conversa com o Rust. Aberto direto no navegador (pra mexer no
 // visual), usa uma imitação em memória com os mesmos comandos.
@@ -27,7 +28,8 @@ let periodo = "hoje";
 let ausencia = null; // { id, desde, minutos } enquanto o diálogo de "você voltou" está aberto
 let conquistasFeitas = null; // ids já desbloqueados, pra comemorar só as novas
 let acessorio = lerPreferencia("acessorio");
-let preferencias = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10 };
+let preferencias = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10, sons: true };
+let carregado = false; // o primeiro estado só serve de base pros sons
 const MAC = /Mac/i.test(navigator.platform);
 let pomodoro = { ligado: false, fase: "parado", fim: null, retomar: null, feitos_hoje: 0 };
 
@@ -39,10 +41,27 @@ $("mascote").innerHTML = svgMascote;
 
 // ---------- Estado e ações ----------
 
+/// O suficiente pra saber que som tocar numa mudança (ver sonsDaMudanca).
+function retrato() {
+  return {
+    rodando: emAndamento()?.id ?? null,
+    fase: pomodoro.fase,
+    conquistas: calcularConquistas(estado.registros).filter((c) => c.ok).length,
+  };
+}
+
+function tocarMudanca(antes) {
+  if (!carregado || !preferencias.sons) return;
+  sonsDaMudanca(antes, retrato()).forEach((som, i) => setTimeout(() => tocar(som), i * 500));
+}
+
 /// Recebe um estado novo (de um comando ou do evento vindo da bandeja/atalho).
 function aplicar(novo) {
   const rodavaAntes = !!emAndamento();
+  const antes = retrato();
   estado = novo;
+  tocarMudanca(antes);
+  carregado = true;
   if (rodavaAntes && !emAndamento()) {
     comemorandoAte = Date.now() + 3000;
     setTimeout(renderMascote, 3000);
@@ -89,7 +108,9 @@ $("botao-retomar").addEventListener("click", () => comecar(pomodoro.retomar));
 $("botao-voltar-pausa").addEventListener("click", () => comecar(pomodoro.retomar));
 
 function aplicarPomodoro(p) {
+  const antes = retrato();
   pomodoro = p;
+  tocarMudanca(antes);
   renderTarefa();
   renderNinho();
   atualizarFala();
@@ -161,6 +182,7 @@ $("botao-config").addEventListener("click", async () => {
   $("cfg-esquecido").value = preferencias.esquecido_horas;
   $("cfg-ausente").value = preferencias.ausente_min;
   $("cfg-pomodoro").checked = preferencias.pomodoro;
+  $("cfg-sons").checked = preferencias.sons;
   $("cfg-foco").value = preferencias.foco_min;
   $("cfg-pausa").value = preferencias.pausa_min;
   $("cfg-caminho").textContent = preferencias.pasta_dados;
@@ -196,6 +218,10 @@ campoAtalho.addEventListener("keydown", (e) => {
   }
 });
 
+$("cfg-testar-som").addEventListener("click", () => {
+  ["comecar", "terminar", "conquista"].forEach((som, i) => setTimeout(() => tocar(som), i * 700));
+});
+
 $("cfg-pasta").addEventListener("click", () => {
   invoke("abrir_pasta_dados").catch((e) => avisar(String(e)));
 });
@@ -217,6 +243,7 @@ $("form-config").addEventListener("submit", async (e) => {
         pomodoro: $("cfg-pomodoro").checked,
         foco_min: Number($("cfg-foco").value),
         pausa_min: Number($("cfg-pausa").value),
+        sons: $("cfg-sons").checked,
       },
       iniciarComSistema: $("cfg-autostart").checked,
     }));
@@ -786,7 +813,7 @@ function imitacaoDoBackend() {
   const limpo = (t) => (t ?? "").trim() || null;
   const copia = () => structuredClone(e);
   const prefs = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10, iniciar_com_sistema: false,
-    pomodoro: false, foco_min: 25, pausa_min: 5,
+    pomodoro: false, foco_min: 25, pausa_min: 5, sons: true,
     pasta_dados: "~/Library/Application Support/franguinho" };
   const novoId = () => Math.max(0, ...e.registros.map((r) => r.id)) + 1;
   const posicao = (id) => {

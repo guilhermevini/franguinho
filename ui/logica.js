@@ -333,3 +333,17 @@ export function relatorioSemanal(registros, agora = new Date(), semanasAtras = 0
   ];
   return linhas.join("\n");
 }
+
+// ---------- Sons ----------
+
+/// Quais sons tocar entre dois retratos do app ({ rodando: id|null, fase,
+/// conquistas }): começar, terminar, pausa e fim da pausa do Pomodoro, conquista.
+export function sonsDaMudanca(antes, depois) {
+  const sons = [];
+  if (depois.rodando && depois.rodando !== antes.rodando) sons.push("comecar");
+  else if (antes.rodando && !depois.rodando) sons.push("terminar");
+  if (antes.fase === "foco" && depois.fase === "pausa") sons.push("pausa");
+  if (antes.fase === "pausa" && depois.fase === "parado") sons.push("voltar");
+  if (depois.conquistas > antes.conquistas) sons.push("conquista");
+  return sons;
+}

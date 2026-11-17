@@ -17,6 +17,8 @@ pub struct Config {
     pub pomodoro: bool,
     pub foco_min: u32,
     pub pausa_min: u32,
+    /// Sons ao começar, terminar, nas viradas do Pomodoro e nas conquistas.
+    pub sons: bool,
 }
 
 impl Default for Config {
@@ -28,6 +30,7 @@ impl Default for Config {
             pomodoro: false,
             foco_min: 25,
             pausa_min: 5,
+            sons: true,
         }
     }
 }

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   acessorioVisivel, atalhoDoEvento, comHora, mapaDoAno, nivelDoDia, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
-  recentes, relatorioSemanal, relogio, resumo, sequencias, sugestoes, temporada,
+  recentes, relatorioSemanal, relogio, resumo, sonsDaMudanca, sequencias, sugestoes, temporada,
 } from "../ui/logica.js";
 
 // 17/11/2026 é uma terça. Datas montadas no fuso local, como o app faz.
@@ -232,4 +232,15 @@ test("relatorioSemanal soma a semana certa, por tarefa e por dia", () => {
   assert.ok(passada.includes("• Trabalho — 8h (100%)"));
 
   assert.match(relatorioSemanal([], agora), /Nenhuma tarefa nesta semana\.$/);
+});
+
+test("sonsDaMudanca escolhe o som de cada virada", () => {
+  const r = (rodando, fase = "parado", conquistas = 0) => ({ rodando, fase, conquistas });
+  assert.deepEqual(sonsDaMudanca(r(null), r(1)), ["comecar"]);
+  assert.deepEqual(sonsDaMudanca(r(1), r(2)), ["comecar"], "trocar de tarefa");
+  assert.deepEqual(sonsDaMudanca(r(1), r(null)), ["terminar"]);
+  assert.deepEqual(sonsDaMudanca(r(1), r(1)), [], "nada mudou");
+  assert.deepEqual(sonsDaMudanca(r(1, "foco"), r(null, "pausa")), ["terminar", "pausa"]);
+  assert.deepEqual(sonsDaMudanca(r(null, "pausa"), r(null, "parado")), ["voltar"]);
+  assert.deepEqual(sonsDaMudanca(r(1, "foco", 2), r(null, "foco", 3)), ["terminar", "conquista"]);
 });

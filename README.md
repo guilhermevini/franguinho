@@ -102,6 +102,12 @@ trabalho —, chega uma notificação e começa a contagem da pausa; no fim dela
 botão pra voltar pra mesma tarefa. Os pomodoros do dia aparecem no ninho. O relógio roda no Rust,
 então funciona com a janela escondida.
 
+## Sons 🔊
+
+Um "có!" ao começar, um cacarejo ao terminar, um sininho na pausa do Pomodoro, duas notas no fim
+dela e um arpejo nas conquistas. São sintetizados na hora (Web Audio API), sem arquivos de áudio.
+Dá pra testar e desligar nas configurações.
+
 ## Ovos e conquistas
 
 Cada tarefa terminada vira um 🥚 no ninho do dia, e dias seguidos de uso acendem uma 🔥 sequência.
