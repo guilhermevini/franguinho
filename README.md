@@ -62,15 +62,16 @@ O GitHub Actions roda `cargo fmt`, `clippy` e os dois conjuntos de testes a cada
 Abra a pasta `ui/` num servidor qualquer (ex.: `python3 -m http.server -d ui`) e use o navegador.
 Fora do Tauri, o `app.js` usa um backend de mentira em memória com os mesmos comandos.
 
-## Projetos
+## Tarefas e atalhos
 
-Clique em **+ projeto** para criar um atalho. Um clique no projeto já começa a tarefa
-(se tiver algo digitado no campo, vira a descrição da tarefa dentro do projeto).
-Clicar noutro projeto troca de tarefa; passe o mouse e clique no **×** para remover.
+Tudo é tarefa: digite um nome novo pra criar ou escolha uma já usada (o campo sugere enquanto você
+digita). Os **atalhos** mostram as tarefas fixadas, cada uma com sua cor, e as últimas usadas; um
+clique começa. Passe o mouse num atalho e clique em **📌** pra fixar ou **×** pra tirar; a tarefa
+rodando também tem um botão **📌 fixar**. Começar outra tarefa termina a anterior.
 
 ## Bandeja, atalho e avisos
 
-- **Bandeja / barra de menu:** mostra a tarefa atual, termina, começa qualquer projeto e abre a janela.
+- **Bandeja / barra de menu:** mostra a tarefa atual, termina, começa qualquer tarefa fixada e abre a janela.
   No macOS, o tempo da tarefa aparece do lado do ícone. Fechar a janela só esconde — use **Sair** no menu.
 - **Atalho global `Ctrl+Alt+F`:** de qualquer app, termina a tarefa rodando ou abre o Franguinho
   pronto pra digitar. Dá pra trocar nas configurações.
@@ -109,13 +110,14 @@ escolhido nas conquistas tem prioridade sobre o da temporada.
 
 ## Resumo e correções
 
-- **Resumo:** horas por projeto de hoje ou da semana (a partir de segunda), em barrinhas.
-- **Corrigir registros:** clique numa tarefa do histórico para mudar nome, projeto e horários
+- **Resumo:** horas por tarefa de hoje ou da semana (a partir de segunda), em barrinhas; as menores
+  se juntam em "Outras".
+- **Corrigir registros:** clique numa tarefa do histórico para mudar o nome e os horários
   (fim antes do início = passou da meia-noite). Na tarefa rodando, clique em "desde HH:MM ✏️".
 
 ## Onde ficam os dados
 
-`registros.json`, `projetos.json` e `config.json`, na pasta de dados do sistema:
+`registros.json`, `fixadas.json` e `config.json`, na pasta de dados do sistema:
 
 | Sistema | Pasta |
 |---|---|

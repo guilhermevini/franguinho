@@ -1,8 +1,6 @@
 // As contas do Franguinho, sem DOM: usadas pela interface e testadas no Node
 // (`node --test`). Toda função que depende do relógio aceita `agora`.
 
-export const SEM_PROJETO = "Sem projeto";
-
 export function duracao(r, agora = new Date()) {
   const fim = r.fim ? new Date(r.fim) : agora;
   return Math.max(0, fim - new Date(r.inicio));
@@ -53,23 +51,45 @@ export function nomeDoDia(iso, agora = new Date()) {
   return new Date(iso).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
 }
 
-/// Horas por projeto desde o começo do dia ("hoje") ou da semana, a partir de
-/// segunda ("semana"). Inclui a tarefa rodando. Linhas da maior pra menor.
-export function resumo(registros, periodo, agora = new Date()) {
+/// Horas por tarefa desde o começo do dia ("hoje") ou da semana, a partir de
+/// segunda ("semana"). Inclui a tarefa rodando. Linhas da maior pra menor; se
+/// passar de `maxLinhas`, as menores viram uma linha só ("Outras N tarefas").
+export function resumo(registros, periodo, agora = new Date(), maxLinhas = 6) {
   const desde = new Date(agora);
   desde.setHours(0, 0, 0, 0);
   if (periodo === "semana") {
     desde.setDate(desde.getDate() - ((desde.getDay() + 6) % 7)); // volta pra segunda
   }
 
-  const porProjeto = new Map();
+  const porTarefa = new Map();
   for (const r of registros) {
     if (new Date(r.inicio) < desde) continue;
-    const nome = r.projeto ?? SEM_PROJETO;
-    porProjeto.set(nome, (porProjeto.get(nome) ?? 0) + duracao(r, agora));
+    porTarefa.set(r.tarefa, (porTarefa.get(r.tarefa) ?? 0) + duracao(r, agora));
   }
-  const linhas = [...porProjeto].sort((a, b) => b[1] - a[1]);
-  return { linhas, total: linhas.reduce((soma, [, ms]) => soma + ms, 0) };
+  let linhas = [...porTarefa].sort((a, b) => b[1] - a[1]);
+  const total = linhas.reduce((soma, [, ms]) => soma + ms, 0);
+  if (linhas.length > maxLinhas) {
+    const resto = linhas.slice(maxLinhas - 1);
+    linhas = [
+      ...linhas.slice(0, maxLinhas - 1),
+      [`Outras ${resto.length} tarefas`, resto.reduce((soma, [, ms]) => soma + ms, 0), { outras: true }],
+    ];
+  }
+  return { linhas, total };
+}
+
+/// Nomes de tarefa já usados, do uso mais recente pro mais antigo, sem repetir.
+export function sugestoes(registros) {
+  const vistos = new Set();
+  return [...registros]
+    .sort((a, b) => new Date(b.inicio) - new Date(a.inicio))
+    .map((r) => r.tarefa)
+    .filter((t) => !vistos.has(t) && vistos.add(t));
+}
+
+/// As últimas tarefas usadas que não estão fixadas, pros atalhos.
+export function recentes(registros, fixadas, quantas = 5) {
+  return sugestoes(registros).filter((t) => !fixadas.includes(t)).slice(0, quantas);
 }
 
 /// Dias seguidos com pelo menos uma tarefa terminada: a sequência atual
@@ -97,12 +117,12 @@ export function sequencias(registros, agora = new Date()) {
 /// Tudo calculado a partir dos registros: nada extra pra salvar.
 export function conquistas(registros, agora = new Date()) {
   const feitos = registros.filter((r) => r.fim);
-  const dias = new Map(); // dia → { ms, projetos }
+  const dias = new Map(); // dia → { ms, tarefas }
   for (const r of feitos) {
     const dia = diaLocal(r.inicio);
-    const d = dias.get(dia) ?? { ms: 0, projetos: new Set() };
+    const d = dias.get(dia) ?? { ms: 0, tarefas: new Set() };
     d.ms += duracao(r);
-    if (r.projeto) d.projetos.add(r.projeto);
+    d.tarefas.add(r.tarefa);
     dias.set(dia, d);
   }
   const horaDe = (iso) => new Date(iso).getHours();
@@ -116,8 +136,8 @@ export function conquistas(registros, agora = new Date()) {
       prog: [feitos.length, 12], acessorio: "chapeu" },
     { id: "foco", emoji: "🎯", nome: "Foco de ferro", desc: "Fique 90 minutos seguidos numa tarefa.",
       ok: feitos.some((r) => duracao(r) >= 90 * 60000), acessorio: "oculos" },
-    { id: "versatil", emoji: "🌈", nome: "Ciscador versátil", desc: "Trabalhe em 3 projetos no mesmo dia.",
-      ok: [...dias.values()].some((d) => d.projetos.size >= 3), acessorio: "laco" },
+    { id: "versatil", emoji: "🌈", nome: "Ciscador versátil", desc: "Trabalhe em 3 tarefas diferentes no mesmo dia.",
+      ok: [...dias.values()].some((d) => d.tarefas.size >= 3), acessorio: "laco" },
     { id: "madrugador", emoji: "🌅", nome: "Madrugador", desc: "Comece uma tarefa antes das 7h.",
       ok: feitos.some((r) => horaDe(r.inicio) < 7 && horaDe(r.inicio) >= 4) },
     { id: "coruja", emoji: "🦉", nome: "Coruja", desc: "Termine uma tarefa depois das 22h.",

@@ -24,25 +24,27 @@
     <section class="cartao" id="cartao-tarefa">
       <form id="form-nova" class="nova">
         <label for="campo-tarefa">O que vamos fazer?</label>
-        <input id="campo-tarefa" type="text" autocomplete="off"
+        <input id="campo-tarefa" type="text" autocomplete="off" list="sugestoes"
                placeholder="ex.: revisar o relatório">
         <button class="botao comecar" type="submit">🐣 Começar</button>
       </form>
 
       <div id="rodando" class="rodando" hidden>
-        <span class="etiqueta" id="rodando-projeto"></span>
+        <span class="etiqueta" id="rodando-etiqueta">Fazendo agora</span>
         <h2 id="rodando-tarefa"></h2>
         <button class="desde" id="rodando-desde" type="button" title="Ajustar o horário de início"></button>
         <div class="editar-inicio" id="editar-inicio" hidden></div>
         <p class="relogio" id="relogio">00:00:00</p>
         <button class="botao terminar" id="botao-terminar" type="button">🏁 Terminar</button>
+        <button class="link botao-fixar" id="botao-fixar" type="button">📌 fixar</button>
       </div>
     </section>
 
     <section class="bloco">
-      <h3>Projetos</h3>
-      <p class="dica" id="dica-projetos">Um clique começa. Se tiver algo digitado acima, vira a descrição da tarefa.</p>
-      <div class="chips" id="projetos"></div>
+      <h3>Atalhos</h3>
+      <div class="chips" id="atalhos"></div>
+      <p class="dica" id="atalhos-vazio">As tarefas que você usar aparecem aqui pra começar com um clique.</p>
+      <p class="dica">📌 fixa uma tarefa nos atalhos, com uma cor só dela.</p>
     </section>
 
     <section class="bloco">
@@ -70,12 +72,14 @@
         <h3>Ninho de tarefas</h3>
         <button class="link" id="botao-csv" type="button" title="Exporta tudo para registros.csv">📄 Exportar CSV</button>
       </div>
-      <p class="dica">Clique numa tarefa para corrigir nome, projeto ou horários.</p>
+      <p class="dica">Clique numa tarefa para corrigir o nome ou os horários.</p>
       <div id="historico"></div>
     </section>
 
     <p class="rodape">⌨️ <kbd id="atalho">Ctrl+Alt+F</kbd> termina a tarefa ou abre o Franguinho, de qualquer app.</p>
   </main>
+
+  <datalist id="sugestoes"></datalist>
 
   <div class="fundo-modal" id="modal-ausencia" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ausencia-titulo">

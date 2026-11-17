@@ -1,6 +1,6 @@
 import {
-  SEM_PROJETO, acessorioVisivel, atalhoDoEvento, comHora, conquistas as calcularConquistas, curto, duracao,
-  horaCampo, nomeDoDia, relogio, resumo, sequencias as calcularSequencias, temporada,
+  acessorioVisivel, atalhoDoEvento, comHora, conquistas as calcularConquistas, curto, duracao,
+  horaCampo, nomeDoDia, recentes, relogio, resumo, sugestoes, sequencias as calcularSequencias, temporada,
 } from "./logica.js";
 import { svgMascote } from "./mascote.js";
 
@@ -18,10 +18,9 @@ const FRASES = [
   "Uma bicadinha de cada vez.",
 ];
 
-let estado = { registros: [], projetos: [] };
+let estado = { registros: [], fixadas: [] };
 let comemorandoAte = 0;
 let confirmarApagar = null;
-let criandoProjeto = false;
 let editando = null; // id do registro aberto pra edição
 let editandoInicio = false; // ajustando o "desde" da tarefa rodando
 let periodo = "hoje";
@@ -72,9 +71,9 @@ async function chamar(comando, args) {
   }
 }
 
-async function comecar(projeto = null) {
-  const tarefa = $("campo-tarefa").value;
-  if (await chamar("comecar", { tarefa, projeto }) && emAndamento()) {
+/// Começa a tarefa digitada, ou a de um atalho.
+async function comecar(tarefa = $("campo-tarefa").value) {
+  if (await chamar("comecar", { tarefa }) && emAndamento()) {
     $("campo-tarefa").value = "";
   }
 }
@@ -85,6 +84,11 @@ $("form-nova").addEventListener("submit", (e) => {
 });
 
 $("botao-terminar").addEventListener("click", () => chamar("terminar"));
+
+$("botao-fixar").addEventListener("click", () => {
+  const r = emAndamento();
+  if (r) chamar(estado.fixadas.includes(r.tarefa) ? "desafixar" : "fixar", { tarefa: r.tarefa });
+});
 
 $("botao-csv").addEventListener("click", async () => {
   try {
@@ -260,7 +264,8 @@ function render() {
   renderMascote();
   renderNinho();
   renderTarefa();
-  renderProjetos();
+  renderAtalhos();
+  renderSugestoes();
   renderResumo();
   renderConquistas();
   renderHistorico();
@@ -310,16 +315,16 @@ function renderTarefa() {
   const r = emAndamento();
   $("form-nova").hidden = !!r;
   $("rodando").hidden = !r;
-  $("dica-projetos").hidden = !!r; // sem o campo à vista, a dica não faz sentido
   if (!r) {
     editandoInicio = false;
     return;
   }
 
-  const etiqueta = $("rodando-projeto");
-  etiqueta.textContent = r.projeto ?? "Fazendo agora";
-  etiqueta.style.setProperty("--cor", r.projeto ? corDoProjeto(r.projeto) : "");
+  const fixada = estado.fixadas.includes(r.tarefa);
+  $("rodando-etiqueta").style.setProperty("--cor", fixada ? corDaTarefa(r.tarefa) : "");
   $("rodando-tarefa").textContent = r.tarefa;
+  $("botao-fixar").textContent = fixada ? "📌 fixada" : "📌 fixar";
+  $("botao-fixar").title = fixada ? "Tirar dos atalhos" : "Fixar nos atalhos";
   $("relogio").textContent = relogio(duracao(r));
 
   $("rodando-desde").hidden = editandoInicio;
@@ -340,7 +345,6 @@ function renderTarefa() {
     await chamar("editar_registro", {
       id: r.id,
       tarefa: r.tarefa,
-      projeto: r.projeto,
       inicio: inicio.toISOString(),
       fim: null,
     });
@@ -359,44 +363,39 @@ function renderTarefa() {
   campo.focus();
 }
 
-function renderProjetos() {
-  const ativo = emAndamento()?.projeto;
-  const lista = $("projetos");
+/// Atalhos: as tarefas fixadas (com cor) e as últimas usadas. Um clique começa.
+function renderAtalhos() {
+  const ativa = emAndamento()?.tarefa;
+  const lista = $("atalhos");
   lista.replaceChildren();
 
-  estado.projetos.forEach((nome, i) => {
-    const chip = el("button", { className: "chip", type: "button", title: `Começar ${nome}` }, nome);
-    chip.style.setProperty("--cor", CORES[i % CORES.length]);
-    if (nome === ativo) chip.classList.add("ativo");
-    chip.addEventListener("click", () => comecar(nome));
-
-    const remover = el("span", { className: "remover", title: "Remover projeto" }, "×");
-    remover.addEventListener("click", (e) => {
+  const chip = (nome, fixada) => {
+    const c = el("button", { className: "chip", type: "button", title: `Começar ${nome}` }, nome);
+    c.style.setProperty("--cor", corDaTarefa(nome));
+    if (!fixada) c.classList.add("recente");
+    if (nome === ativa) c.classList.add("ativo");
+    c.addEventListener("click", () => comecar(nome));
+    const acao = el("span", { className: "remover", title: fixada ? "Tirar dos atalhos" : "Fixar nos atalhos" },
+      fixada ? "×" : "📌");
+    acao.addEventListener("click", (e) => {
       e.stopPropagation();
-      chamar("remover_projeto", { nome });
+      chamar(fixada ? "desafixar" : "fixar", { tarefa: nome });
     });
-    chip.append(remover);
-    lista.append(chip);
-  });
+    c.append(acao);
+    return c;
+  };
 
-  if (criandoProjeto) {
-    const campo = el("input", { type: "text", placeholder: "nome do projeto", maxLength: 40 });
-    const fechar = () => { criandoProjeto = false; renderProjetos(); };
-    campo.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") fechar();
-      if (e.key === "Enter" && campo.value.trim()) {
-        criandoProjeto = false;
-        chamar("adicionar_projeto", { nome: campo.value });
-      }
-    });
-    campo.addEventListener("blur", () => criandoProjeto && fechar());
-    lista.append(campo);
-    campo.focus();
-  } else {
-    const novo = el("button", { className: "chip novo", type: "button" }, "+ projeto");
-    novo.addEventListener("click", () => { criandoProjeto = true; renderProjetos(); });
-    lista.append(novo);
-  }
+  estado.fixadas.forEach((nome) => lista.append(chip(nome, true)));
+  const ultimas = recentes(estado.registros, estado.fixadas);
+  if (ultimas.length && estado.fixadas.length) lista.append(el("span", { className: "divisor" }));
+  ultimas.forEach((nome) => lista.append(chip(nome, false)));
+  $("atalhos-vazio").hidden = lista.children.length > 0;
+}
+
+/// Autocompletar do campo: as tarefas já usadas, das mais recentes.
+function renderSugestoes() {
+  $("sugestoes").replaceChildren(
+    ...sugestoes(estado.registros).slice(0, 50).map((t) => el("option", { value: t })));
 }
 
 function renderResumo() {
@@ -417,9 +416,9 @@ function renderResumo() {
   const maior = linhas[0][1] || 1;
   caixa.append(el("div", { className: "resumo-total" },
     el("span", {}, "Total"), el("strong", {}, curto(total))));
-  for (const [nome, ms] of linhas) {
+  for (const [nome, ms, extra] of linhas) {
     const barra = el("div", { className: "barra" });
-    barra.style.setProperty("--cor", nome === SEM_PROJETO ? "var(--tinta-suave)" : corDoProjeto(nome));
+    barra.style.setProperty("--cor", extra?.outras ? "var(--linha)" : corDaTarefa(nome));
     barra.style.setProperty("--tamanho", `${Math.max(4, (ms / maior) * 100)}%`);
     caixa.append(el("div", { className: "resumo-linha" },
       el("span", { className: "resumo-nome", title: nome }, nome),
@@ -456,10 +455,9 @@ function renderHistorico() {
 
 function item(r) {
   const bolinha = el("span", { className: "bolinha" });
-  if (r.projeto) bolinha.style.setProperty("--cor", corDoProjeto(r.projeto));
+  bolinha.style.setProperty("--cor", corDaTarefa(r.tarefa));
 
-  const meta = `${hora(r.inicio)} → ${hora(r.fim)}` +
-    (r.projeto && r.projeto !== r.tarefa ? ` · ${r.projeto}` : "");
+  const meta = `${hora(r.inicio)} → ${hora(r.fim)}`;
 
   const textos = el("button", { className: "textos", type: "button", title: "Clique para editar" },
     el("div", { className: "nome" }, r.tarefa),
@@ -492,12 +490,7 @@ function item(r) {
 
 function itemEditando(r) {
   const nome = el("input", { type: "text", value: r.tarefa, placeholder: "tarefa" });
-  const projeto = el("select", {},
-    el("option", { value: "" }, SEM_PROJETO),
-    ...estado.projetos.map((p) => el("option", { value: p, selected: p === r.projeto }, p)));
-  if (r.projeto && !estado.projetos.includes(r.projeto)) {
-    projeto.append(el("option", { value: r.projeto, selected: true }, r.projeto));
-  }
+  nome.setAttribute("list", "sugestoes");
   const inicio = el("input", { type: "time", value: horaCampo(r.inicio) });
   const fim = el("input", { type: "time", value: horaCampo(r.fim) });
 
@@ -508,7 +501,6 @@ function itemEditando(r) {
     const ok = await chamar("editar_registro", {
       id: r.id,
       tarefa: nome.value,
-      projeto: projeto.value || null,
       inicio: novoInicio.toISOString(),
       fim: novoFim.toISOString(),
     });
@@ -518,7 +510,6 @@ function itemEditando(r) {
 
   const caixa = el("div", { className: "item editando" },
     nome,
-    projeto,
     el("div", { className: "horarios" }, inicio, el("span", {}, "→"), fim),
     el("div", { className: "acoes" },
       botaoPequeno("cancelar", cancelar),
@@ -630,8 +621,9 @@ function botaoPequeno(texto, acao, tipo = "") {
   return b;
 }
 
-function corDoProjeto(nome) {
-  const i = estado.projetos.indexOf(nome);
+/// Tarefas fixadas têm a cor da sua posição; as outras, um tom neutro.
+function corDaTarefa(nome) {
+  const i = estado.fixadas.indexOf(nome);
   return i < 0 ? "var(--tinta-suave)" : CORES[i % CORES.length];
 }
 
@@ -649,7 +641,7 @@ function avisar(texto) {
 }
 
 function imitacaoDoBackend() {
-  const e = { registros: [], projetos: ["Trabalho", "Estudos", "Casa"] };
+  const e = { registros: [], fixadas: ["Trabalho", "Estudos", "Casa"] };
   const limpo = (t) => (t ?? "").trim() || null;
   const copia = () => structuredClone(e);
   const prefs = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10, iniciar_com_sistema: false,
@@ -662,13 +654,13 @@ function imitacaoDoBackend() {
   };
   const comandos = {
     carregar: copia,
-    comecar({ tarefa, projeto }) {
-      projeto = limpo(projeto);
-      tarefa = limpo(tarefa) ?? projeto;
+    comecar({ tarefa }) {
+      tarefa = limpo(tarefa);
       if (!tarefa) throw "Me conta o que você vai fazer!";
       const atual = e.registros.find((r) => !r.fim);
       if (atual) atual.fim = new Date().toISOString();
-      e.registros.push({ id: novoId(), tarefa, projeto, inicio: new Date().toISOString(), fim: null });
+      if (atual?.tarefa === tarefa) { atual.fim = null; return copia(); }
+      e.registros.push({ id: novoId(), tarefa, inicio: new Date().toISOString(), fim: null });
       return copia();
     },
     terminar() {
@@ -676,9 +668,9 @@ function imitacaoDoBackend() {
       if (atual) atual.fim = new Date().toISOString();
       return copia();
     },
-    editar_registro({ id, tarefa, projeto, inicio, fim }) {
+    editar_registro({ id, tarefa, inicio, fim }) {
       if (fim && fim <= inicio) throw "O fim precisa ser depois do início.";
-      Object.assign(e.registros[posicao(id)], { tarefa, projeto, inicio, fim });
+      Object.assign(e.registros[posicao(id)], { tarefa: limpo(tarefa), inicio, fim });
       e.registros.sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
       return copia();
     },
@@ -692,11 +684,11 @@ function imitacaoDoBackend() {
       return copia();
     },
     apagar_registro({ id }) { e.registros.splice(posicao(id), 1); return copia(); },
-    adicionar_projeto({ nome }) {
-      if (!e.projetos.includes(nome.trim())) e.projetos.push(nome.trim());
+    fixar({ tarefa }) {
+      if (!e.fixadas.includes(tarefa.trim())) e.fixadas.push(tarefa.trim());
       return copia();
     },
-    remover_projeto({ nome }) { e.projetos = e.projetos.filter((p) => p !== nome); return copia(); },
+    desafixar({ tarefa }) { e.fixadas = e.fixadas.filter((t) => t !== tarefa); return copia(); },
     exportar_csv: () => "(modo navegador: nada foi exportado)",
     preferencias: () => ({ ...prefs }),
     salvar_preferencias({ config, iniciarComSistema }) {

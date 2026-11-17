@@ -75,18 +75,18 @@ fn montar_menu(app: &AppHandle, estado: &Estado) -> tauri::Result<Menu<Wry>> {
         None::<&str>,
     )?)?;
 
-    if !estado.projetos.is_empty() {
+    if !estado.fixadas.is_empty() {
         menu.append(&PredefinedMenuItem::separator(app)?)?;
-        let ativo = atual.and_then(|r| r.projeto.as_deref());
-        for (i, p) in estado.projetos.iter().enumerate() {
-            let rotulo = if ativo == Some(p.as_str()) {
-                format!("● {p}")
+        let ativa = atual.map(|r| r.tarefa.as_str());
+        for (i, t) in estado.fixadas.iter().enumerate() {
+            let rotulo = if ativa == Some(t.as_str()) {
+                format!("● {t}")
             } else {
-                format!("▶ {p}")
+                format!("▶ {t}")
             };
             menu.append(&MenuItem::with_id(
                 app,
-                format!("projeto:{i}"),
+                format!("fixada:{i}"),
                 rotulo,
                 true,
                 None::<&str>,
@@ -127,12 +127,12 @@ fn ao_clicar(app: &AppHandle, id: &str) {
             Ok(())
         }
         _ => {
-            let projeto = id
-                .strip_prefix("projeto:")
+            let fixada = id
+                .strip_prefix("fixada:")
                 .and_then(|i| i.parse::<usize>().ok())
-                .and_then(|i| f.ler().projetos.get(i).cloned());
-            match projeto {
-                Some(p) => f.comecar(app, None, Some(p)).map(|_| ()),
+                .and_then(|i| f.ler().fixadas.get(i).cloned());
+            match fixada {
+                Some(t) => f.comecar(app, Some(t)).map(|_| ()),
                 None => Ok(()),
             }
         }

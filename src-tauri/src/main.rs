@@ -60,7 +60,7 @@ impl Franguinho {
             mudanca(&mut estado)?;
             self.store
                 .salvar(&estado.registros)
-                .and_then(|_| self.store.salvar_projetos(&estado.projetos))
+                .and_then(|_| self.store.salvar_fixadas(&estado.fixadas))
                 .map_err(|e| format!("Ih, não consegui salvar: {e}"))?;
             estado.clone()
         };
@@ -69,13 +69,8 @@ impl Franguinho {
         Ok(novo)
     }
 
-    pub fn comecar(
-        &self,
-        app: &AppHandle,
-        tarefa: Option<String>,
-        projeto: Option<String>,
-    ) -> Resultado {
-        self.alterar(app, |e| e.comecar(tarefa, projeto, Local::now()))
+    pub fn comecar(&self, app: &AppHandle, tarefa: Option<String>) -> Resultado {
+        self.alterar(app, |e| e.comecar(tarefa, Local::now()))
     }
 
     /// Backup do dia, se ainda não foi feito (ver Store::backup_diario).
@@ -99,13 +94,8 @@ fn carregar(f: State<Franguinho>) -> Estado {
 }
 
 #[tauri::command]
-fn comecar(
-    app: AppHandle,
-    f: State<Franguinho>,
-    tarefa: Option<String>,
-    projeto: Option<String>,
-) -> Resultado {
-    f.comecar(&app, tarefa, projeto)
+fn comecar(app: AppHandle, f: State<Franguinho>, tarefa: Option<String>) -> Resultado {
+    f.comecar(&app, tarefa)
 }
 
 #[tauri::command]
@@ -132,13 +122,10 @@ fn editar_registro(
     f: State<Franguinho>,
     id: u64,
     tarefa: String,
-    projeto: Option<String>,
     inicio: DateTime<Local>,
     fim: Option<DateTime<Local>>,
 ) -> Resultado {
-    f.alterar(&app, |e| {
-        e.editar(id, tarefa, projeto, inicio, fim, Local::now())
-    })
+    f.alterar(&app, |e| e.editar(id, tarefa, inicio, fim, Local::now()))
 }
 
 #[tauri::command]
@@ -147,14 +134,14 @@ fn apagar_registro(app: AppHandle, f: State<Franguinho>, id: u64) -> Resultado {
 }
 
 #[tauri::command]
-fn adicionar_projeto(app: AppHandle, f: State<Franguinho>, nome: String) -> Resultado {
-    f.alterar(&app, |e| e.adicionar_projeto(nome))
+fn fixar(app: AppHandle, f: State<Franguinho>, tarefa: String) -> Resultado {
+    f.alterar(&app, |e| e.fixar(tarefa))
 }
 
 #[tauri::command]
-fn remover_projeto(app: AppHandle, f: State<Franguinho>, nome: String) -> Resultado {
+fn desafixar(app: AppHandle, f: State<Franguinho>, tarefa: String) -> Resultado {
     f.alterar(&app, |e| {
-        e.remover_projeto(&nome);
+        e.desafixar(&tarefa);
         Ok(())
     })
 }
@@ -256,11 +243,11 @@ fn main() {
     if let Err(e) = store.backup_diario(Local::now().date_naive()) {
         eprintln!("não consegui fazer o backup do dia: {e}");
     }
-    let (estado, corrigiu) = Estado::novo(store.carregar(), store.carregar_projetos());
+    let (estado, corrigiu) = Estado::novo(store.carregar(), store.carregar_fixadas());
     let config = store.carregar_config();
     let atalho = config.atalho.clone();
     if corrigiu {
-        // Grava os ids novos pra eles continuarem os mesmos na próxima vez.
+        // Grava as correções (ids novos, tarefas que tinham projeto) pra valerem de vez.
         if let Err(e) = store.salvar(&estado.registros) {
             eprintln!("não consegui gravar os ids dos registros: {e}");
         }
@@ -309,8 +296,8 @@ fn main() {
             descontar_ausencia,
             editar_registro,
             apagar_registro,
-            adicionar_projeto,
-            remover_projeto,
+            fixar,
+            desafixar,
             exportar_csv,
             alternar_mini,
             abrir_janela,

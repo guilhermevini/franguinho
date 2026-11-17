@@ -621,3 +621,12 @@ kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px so
 .faixa-atualizacao .pequeno.primario { background: var(--verde); border-color: var(--verde); }
 .faixa-atualizacao .pequeno:disabled { opacity: 0.7; cursor: wait; }
 .versao { font-weight: 700; color: var(--tinta-suave); }
+
+/* ---------- Atalhos (tarefas fixadas e recentes) ---------- */
+
+.chip.recente { border-style: dashed; background: transparent; }
+.chips .divisor { width: 2px; align-self: stretch; margin: 4px 2px; background: var(--linha); border-radius: 2px; }
+.chip .remover { font-size: 11px; }
+.botao-fixar { margin-top: 6px; }
+.etiqueta:empty { display: none; }
+.chip.recente.ativo { background: var(--cor); border-style: solid; }

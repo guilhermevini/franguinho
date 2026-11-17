@@ -4,12 +4,12 @@ import { svgMascote } from "./mascote.js";
 const tauri = window.__TAURI__;
 // No navegador (prévia do visual), uma tarefa de mentira rodando.
 const invoke = tauri?.core.invoke ?? (async (comando) => comando === "carregar"
-  ? { projetos: ["Trabalho"], registros: [{ id: 1, tarefa: "revisar PR do login", projeto: "Trabalho",
+  ? { fixadas: ["Trabalho"], registros: [{ id: 1, tarefa: "Trabalho · revisar PR",
       inicio: new Date(Date.now() - 754000).toISOString(), fim: null }] }
   : undefined);
 
 const $ = (id) => document.getElementById(id);
-let estado = { registros: [], projetos: [] };
+let estado = { registros: [], fixadas: [] };
 let comemorandoAte = 0;
 let esquecidoMs = 3 * 3600 * 1000; // atualizado pelas configurações
 
@@ -40,7 +40,7 @@ function render() {
   document.body.classList.toggle("ocioso", !r);
   document.body.classList.toggle("alerta", !!r && esquecidoMs > 0 && duracao(r) >= esquecidoMs);
   $("tarefa").textContent = r ? r.tarefa : "Zzz...";
-  $("tarefa").title = r ? `${r.projeto ? r.projeto + " · " : ""}${r.tarefa}` : "";
+  $("tarefa").title = r ? r.tarefa : "";
   $("relogio").textContent = r ? relogio(duracao(r)) : "clique pra começar";
   $("acao").textContent = r ? "■" : "▶";
   $("acao").title = r ? "Terminar" : "Começar uma tarefa";

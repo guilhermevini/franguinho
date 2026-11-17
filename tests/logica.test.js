@@ -2,13 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   acessorioVisivel, atalhoDoEvento, comHora, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
-  relogio, resumo, sequencias, temporada,
+  recentes, relogio, resumo, sequencias, sugestoes, temporada,
 } from "../ui/logica.js";
 
 // 17/11/2026 é uma terça. Datas montadas no fuso local, como o app faz.
 const em = (dia, h, m = 0) => new Date(2026, 10, dia, h, m).toISOString();
-const feito = (tarefa, projeto, dia, h1, m1, h2, m2) =>
-  ({ tarefa, projeto, inicio: em(dia, h1, m1), fim: em(dia, h2, m2) });
+const feito = (tarefa, dia, h1, m1, h2, m2) =>
+  ({ tarefa, inicio: em(dia, h1, m1), fim: em(dia, h2, m2) });
 const MIN = 60000;
 
 test("curto e relogio formatam durações", () => {
@@ -46,24 +46,48 @@ test("nomeDoDia diz Hoje e Ontem", () => {
 test("resumo separa hoje da semana (a partir de segunda) e conta a tarefa rodando", () => {
   const agora = new Date(em(18, 12)); // quarta
   const registros = [
-    feito("domingo", "Trabalho", 15, 9, 0, 10, 0), // semana passada
-    feito("segunda", "Trabalho", 16, 9, 0, 10, 0),
-    feito("hoje", "Trabalho", 18, 9, 0, 9, 30),
-    feito("avulsa", null, 18, 10, 0, 10, 15),
-    { tarefa: "estudar", projeto: "Estudos", inicio: em(18, 11, 30), fim: null },
+    feito("Trabalho", 15, 9, 0, 10, 0), // domingo: semana passada
+    feito("Trabalho", 16, 9, 0, 10, 0),
+    feito("Trabalho", 18, 9, 0, 9, 30),
+    feito("e-mails", 18, 10, 0, 10, 15),
+    { tarefa: "Estudos", inicio: em(18, 11, 30), fim: null },
   ];
   const hoje = resumo(registros, "hoje", agora);
   assert.equal(hoje.total, 75 * MIN);
   assert.deepEqual(Object.fromEntries(hoje.linhas),
-    { Trabalho: 30 * MIN, Estudos: 30 * MIN, "Sem projeto": 15 * MIN });
+    { Trabalho: 30 * MIN, Estudos: 30 * MIN, "e-mails": 15 * MIN });
 
   const semana = resumo(registros, "semana", agora);
   assert.deepEqual(semana.linhas[0], ["Trabalho", 90 * MIN]);
   assert.equal(semana.total, 135 * MIN);
 });
 
+test("resumo junta as menores em Outras quando passa do limite", () => {
+  const agora = new Date(em(17, 23));
+  const registros = ["a", "b", "c", "d"].map((t, i) => feito(t, 17, 9 + i, 0, 9 + i, 40 - i * 10));
+  const { linhas, total } = resumo(registros, "hoje", agora, 3);
+  assert.equal(linhas.length, 3);
+  assert.deepEqual(linhas.slice(0, 2).map((l) => l[0]), ["a", "b"]);
+  assert.equal(linhas[2][0], "Outras 2 tarefas");
+  assert.equal(linhas[2][1], (20 + 10) * MIN);
+  assert.ok(linhas[2][2].outras);
+  assert.equal(total, (40 + 30 + 20 + 10) * MIN);
+});
+
+test("sugestoes e recentes vêm do uso mais recente, sem repetir nem fixadas", () => {
+  const registros = [
+    feito("a", 15, 9, 0, 10, 0),
+    feito("b", 16, 9, 0, 10, 0),
+    feito("a", 17, 9, 0, 10, 0),
+    feito("c", 17, 11, 0, 12, 0),
+  ];
+  assert.deepEqual(sugestoes(registros), ["c", "a", "b"]);
+  assert.deepEqual(recentes(registros, ["a"]), ["c", "b"]);
+  assert.deepEqual(recentes(registros, [], 2), ["c", "a"]);
+});
+
 test("sequencias: atual vale até ontem e melhor guarda o recorde", () => {
-  const registros = [10, 11, 14, 15, 16, 17].map((d) => feito("x", null, d, 9, 0, 10, 0));
+  const registros = [10, 11, 14, 15, 16, 17].map((d) => feito("x", d, 9, 0, 10, 0));
   assert.deepEqual(sequencias(registros, new Date(em(17, 20))), { atual: 4, melhor: 4 });
   assert.deepEqual(sequencias(registros, new Date(em(18, 8))), { atual: 4, melhor: 4 });
   assert.deepEqual(sequencias(registros, new Date(em(19, 8))), { atual: 0, melhor: 4 });
@@ -76,15 +100,16 @@ test("conquistas são calculadas a partir dos registros", () => {
     new Set(conquistas(registros, new Date(em(17, 23, 30))).filter((c) => c.ok).map((c) => c.id));
 
   assert.equal(ok([]).size, 0);
-  assert.ok(ok([feito("a", null, 17, 9, 0, 9, 10)]).has("primeiro"));
-  assert.ok(ok([feito("longa", null, 17, 9, 0, 10, 30)]).has("foco"));
-  assert.ok(!ok([feito("quase", null, 17, 9, 0, 10, 29)]).has("foco"));
-  assert.ok(ok([feito("cedo", null, 17, 6, 0, 6, 30)]).has("madrugador"));
-  assert.ok(ok([feito("tarde", null, 17, 22, 0, 23, 0)]).has("coruja"));
-  assert.ok(ok(["A", "B", "C"].map((p, i) => feito(p, p, 17, 9 + i, 0, 9 + i, 30))).has("versatil"));
-  assert.ok(ok([feito("maratona", null, 17, 8, 0, 14, 0)]).has("maratona"));
+  assert.ok(ok([feito("a", 17, 9, 0, 9, 10)]).has("primeiro"));
+  assert.ok(ok([feito("longa", 17, 9, 0, 10, 30)]).has("foco"));
+  assert.ok(!ok([feito("quase", 17, 9, 0, 10, 29)]).has("foco"));
+  assert.ok(ok([feito("cedo", 17, 6, 0, 6, 30)]).has("madrugador"));
+  assert.ok(ok([feito("tarde", 17, 22, 0, 23, 0)]).has("coruja"));
+  assert.ok(ok(["A", "B", "C"].map((t, i) => feito(t, 17, 9 + i, 0, 9 + i, 30))).has("versatil"));
+  assert.ok(!ok(["A", "A", "B"].map((t, i) => feito(t, 17, 9 + i, 0, 9 + i, 30))).has("versatil"));
+  assert.ok(ok([feito("maratona", 17, 8, 0, 14, 0)]).has("maratona"));
 
-  const duzia = conquistas([feito("a", null, 17, 9, 0, 9, 10)]).find((c) => c.id === "duzia");
+  const duzia = conquistas([feito("a", 17, 9, 0, 9, 10)]).find((c) => c.id === "duzia");
   assert.deepEqual(duzia.prog, [1, 12]);
   assert.equal(duzia.acessorio, "chapeu");
 });
@@ -122,7 +147,7 @@ test("temporada de cada época do ano", () => {
 
 test("acessório escolhido vence a temporada, se a conquista ainda vale", () => {
   const natal = new Date(2026, 11, 10, 12);
-  const longa = [feito("longa", null, 17, 9, 0, 10, 30)]; // libera os óculos
+  const longa = [feito("longa", 17, 9, 0, 10, 30)]; // libera os óculos
   assert.equal(acessorioVisivel([], "", natal), "gorro");
   assert.equal(acessorioVisivel(longa, "oculos", natal), "oculos");
   assert.equal(acessorioVisivel([], "oculos", natal), "gorro"); // sem a conquista, volta pro gorro

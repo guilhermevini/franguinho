@@ -11,7 +11,9 @@ pub struct Registro {
     #[serde(default)]
     pub id: u64,
     pub tarefa: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Só do formato antigo, de antes de tarefa e projeto virarem uma coisa só:
+    /// lido pra migrar (ver Estado::novo) e nunca mais gravado.
+    #[serde(default, skip_serializing)]
     pub projeto: Option<String>,
     pub inicio: DateTime<Local>,
     pub fim: Option<DateTime<Local>>,
@@ -60,12 +62,17 @@ impl Store {
         self.gravar("registros.json", registros)
     }
 
-    pub fn carregar_projetos(&self) -> Vec<String> {
-        self.ler("projetos.json")
+    /// Tarefas fixadas nos atalhos. Na primeira vez, herda os antigos projetos.
+    pub fn carregar_fixadas(&self) -> Vec<String> {
+        if self.pasta.join("fixadas.json").exists() {
+            self.ler("fixadas.json")
+        } else {
+            self.ler("projetos.json")
+        }
     }
 
-    pub fn salvar_projetos(&self, projetos: &[String]) -> io::Result<()> {
-        self.gravar("projetos.json", projetos)
+    pub fn salvar_fixadas(&self, fixadas: &[String]) -> io::Result<()> {
+        self.gravar("fixadas.json", fixadas)
     }
 
     pub fn carregar_config(&self) -> crate::config::Config {
@@ -121,7 +128,7 @@ impl Store {
         let tmp = raiz.join(format!(".{dia}.tmp"));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp)?;
-        for nome in ["registros.json", "projetos.json"] {
+        for nome in ["registros.json", "fixadas.json", "projetos.json"] {
             let arquivo = self.pasta.join(nome);
             if arquivo.exists() {
                 fs::copy(&arquivo, tmp.join(nome))?;
@@ -147,12 +154,11 @@ impl Store {
         fs::create_dir_all(&self.pasta)?;
         let destino = self.pasta.join("registros.csv");
         let aspas = |s: &str| format!("\"{}\"", s.replace('"', "\"\""));
-        let mut csv = String::from("projeto,tarefa,inicio,fim,duracao_minutos\n");
+        let mut csv = String::from("tarefa,inicio,fim,duracao_minutos\n");
         for r in registros {
             let fim = r.fim.map(|f| f.to_rfc3339()).unwrap_or_default();
             csv.push_str(&format!(
-                "{},{},{},{},{}\n",
-                aspas(r.projeto.as_deref().unwrap_or_default()),
+                "{},{},{},{}\n",
                 aspas(&r.tarefa),
                 r.inicio.to_rfc3339(),
                 fim,
@@ -187,12 +193,12 @@ mod testes {
         }
     }
 
-    fn registro(id: u64, tarefa: &str, projeto: Option<&str>) -> Registro {
+    fn registro(id: u64, tarefa: &str) -> Registro {
         let inicio = Local.with_ymd_and_hms(2026, 11, 17, 9, 0, 0).unwrap();
         Registro {
             id,
             tarefa: tarefa.into(),
-            projeto: projeto.map(Into::into),
+            projeto: None,
             inicio,
             fim: Some(inicio + TimeDelta::minutes(90)),
         }
@@ -203,40 +209,53 @@ mod testes {
         let pasta = Pasta::nova("vazio");
         let store = Store::em(pasta.0.clone());
         assert!(store.carregar().is_empty());
-        assert!(store.carregar_projetos().is_empty());
+        assert!(store.carregar_fixadas().is_empty());
     }
 
     #[test]
     fn salva_e_carrega_de_volta() {
         let pasta = Pasta::nova("ida-e-volta");
         let store = Store::em(pasta.0.clone());
-        store
-            .salvar(&[registro(1, "a", Some("Trabalho")), registro(2, "b", None)])
-            .unwrap();
-        store.salvar_projetos(&["Trabalho".into()]).unwrap();
+        store.salvar(&[registro(1, "a"), registro(2, "b")]).unwrap();
+        store.salvar_fixadas(&["Trabalho".into()]).unwrap();
 
         let lidos = store.carregar();
         assert_eq!(lidos.len(), 2);
-        assert_eq!(
-            (lidos[0].id, lidos[0].projeto.as_deref()),
-            (1, Some("Trabalho"))
-        );
+        assert_eq!((lidos[0].id, lidos[0].tarefa.as_str()), (1, "a"));
         assert_eq!(lidos[1].duracao(), TimeDelta::minutes(90));
-        assert_eq!(store.carregar_projetos(), vec!["Trabalho"]);
+        assert_eq!(store.carregar_fixadas(), vec!["Trabalho"]);
         assert!(!pasta.0.join("registros.json.tmp").exists());
     }
 
     #[test]
-    fn le_o_formato_antigo_sem_id_nem_projeto() {
+    fn campo_projeto_antigo_e_lido_mas_nao_gravado() {
         let pasta = Pasta::nova("antigo");
         fs::create_dir_all(&pasta.0).unwrap();
         fs::write(
             pasta.0.join("registros.json"),
-            r#"[{"tarefa":"x","inicio":"2026-11-16T09:00:00-03:00","fim":null}]"#,
+            r#"[{"tarefa":"x","projeto":"P","inicio":"2026-11-16T09:00:00-03:00","fim":null}]"#,
         )
         .unwrap();
-        let lidos = Store::em(pasta.0.clone()).carregar();
-        assert_eq!((lidos[0].id, lidos[0].projeto.clone()), (0, None));
+        let store = Store::em(pasta.0.clone());
+        let lidos = store.carregar();
+        assert_eq!((lidos[0].id, lidos[0].projeto.as_deref()), (0, Some("P")));
+        store.salvar(&lidos).unwrap();
+        let json = fs::read_to_string(pasta.0.join("registros.json")).unwrap();
+        assert!(!json.contains("projeto"));
+    }
+
+    #[test]
+    fn fixadas_herdam_os_projetos_antigos_uma_vez() {
+        let pasta = Pasta::nova("fixadas");
+        fs::create_dir_all(&pasta.0).unwrap();
+        fs::write(pasta.0.join("projetos.json"), r#"["clios"]"#).unwrap();
+        let store = Store::em(pasta.0.clone());
+        assert_eq!(store.carregar_fixadas(), vec!["clios"]);
+        store.salvar_fixadas(&[]).unwrap();
+        assert!(
+            store.carregar_fixadas().is_empty(),
+            "depois de salvar, vale o fixadas.json"
+        );
     }
 
     #[test]
@@ -267,12 +286,12 @@ mod testes {
             "sem dados, sem backup"
         );
 
-        store.salvar(&[registro(1, "a", None)]).unwrap();
-        store.salvar_projetos(&["Trabalho".into()]).unwrap();
+        store.salvar(&[registro(1, "a")]).unwrap();
+        store.salvar_fixadas(&["Trabalho".into()]).unwrap();
         assert!(store.backup_diario(dia(1)).unwrap());
         let copia = pasta.0.join("backups/2026-11-01");
         assert!(copia.join("registros.json").exists());
-        assert!(copia.join("projetos.json").exists());
+        assert!(copia.join("fixadas.json").exists());
 
         // No mesmo dia não refaz (o backup é o retrato do começo do dia).
         store.salvar(&[]).unwrap();
@@ -301,12 +320,12 @@ mod testes {
         let pasta = Pasta::nova("csv");
         let store = Store::em(pasta.0.clone());
         let caminho = store
-            .exportar_csv(&[registro(1, "revisar \"PR\", urgente", Some("Trabalho"))])
+            .exportar_csv(&[registro(1, "revisar \"PR\", urgente")])
             .unwrap();
         let csv = fs::read_to_string(caminho).unwrap();
         let linhas: Vec<&str> = csv.lines().collect();
-        assert_eq!(linhas[0], "projeto,tarefa,inicio,fim,duracao_minutos");
-        assert!(linhas[1].starts_with("\"Trabalho\",\"revisar \"\"PR\"\", urgente\","));
+        assert_eq!(linhas[0], "tarefa,inicio,fim,duracao_minutos");
+        assert!(linhas[1].starts_with("\"revisar \"\"PR\"\", urgente\","));
         assert!(linhas[1].ends_with(",90"));
     }
 }
