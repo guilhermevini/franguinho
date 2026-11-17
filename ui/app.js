@@ -1,6 +1,6 @@
 import {
   acessorioVisivel, atalhoDoEvento, comHora, mapaDoAno, conquistas as calcularConquistas, curto, duracao,
-  horaCampo, nomeDoDia, recentes, relogio, resumo, sugestoes, sequencias as calcularSequencias, temporada,
+  horaCampo, nomeDoDia, recentes, relatorioSemanal, relogio, resumo, sugestoes, sequencias as calcularSequencias, temporada,
 } from "./logica.js";
 import { svgMascote } from "./mascote.js";
 
@@ -522,6 +522,54 @@ function itemEditando(r) {
   setTimeout(() => nome.focus());
   return caixa;
 }
+
+// ---------- Relatório semanal ----------
+
+let semanaDoRelatorio = 0;
+
+function renderRelatorio() {
+  for (const aba of $("abas-relatorio").children) {
+    aba.classList.toggle("ativa", Number(aba.dataset.semana) === semanaDoRelatorio);
+  }
+  $("relatorio-texto").value = relatorioSemanal(estado.registros, new Date(), semanaDoRelatorio);
+}
+
+$("botao-relatorio").addEventListener("click", () => {
+  semanaDoRelatorio = 0;
+  renderRelatorio();
+  $("modal-relatorio").hidden = false;
+  $("relatorio-copiar").focus();
+});
+$("abas-relatorio").addEventListener("click", (e) => {
+  const aba = e.target.closest("[data-semana]");
+  if (!aba) return;
+  semanaDoRelatorio = Number(aba.dataset.semana);
+  renderRelatorio();
+});
+const fecharRelatorio = () => ($("modal-relatorio").hidden = true);
+$("relatorio-fechar").addEventListener("click", fecharRelatorio);
+$("modal-relatorio").addEventListener("click", (e) => {
+  if (e.target === $("modal-relatorio")) fecharRelatorio();
+});
+$("modal-relatorio").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") fecharRelatorio();
+});
+$("relatorio-copiar").addEventListener("click", async () => {
+  const campo = $("relatorio-texto");
+  try {
+    // No app, copia pelo Rust (mais garantido que a API do navegador na webview).
+    if (tauri) await invoke("copiar", { texto: campo.value });
+    else await navigator.clipboard.writeText(campo.value);
+  } catch {
+    // Plano B pra webviews sem a API de clipboard: seleciona e copia.
+    campo.select();
+    if (!document.execCommand("copy")) {
+      avisar("Não consegui copiar. Selecione o texto e use Ctrl+C / Cmd+C.");
+      return;
+    }
+  }
+  avisar("Copiado! Agora é só colar 🐔");
+});
 
 // ---------- Mapa de calor ----------
 

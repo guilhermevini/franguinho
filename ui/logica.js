@@ -288,3 +288,48 @@ export function mapaDoAno(registros, agora = new Date(), semanas = 53) {
   }
   return { semanas: colunas, meses, total, diasAtivos, melhor };
 }
+
+// ---------- Relatório semanal ----------
+
+/// Texto pronto pra colar (timesheet, chat): total, horas por tarefa e por dia
+/// da semana de segunda a domingo. `semanasAtras` = 0 é esta semana, 1 a passada.
+export function relatorioSemanal(registros, agora = new Date(), semanasAtras = 0) {
+  const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  inicio.setDate(inicio.getDate() - ((inicio.getDay() + 6) % 7) - semanasAtras * 7);
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 7);
+
+  const porTarefa = new Map();
+  const porDia = new Map();
+  for (const r of registros) {
+    const comeco = new Date(r.inicio);
+    if (comeco < inicio || comeco >= fim) continue;
+    const ms = duracao(r, agora);
+    porTarefa.set(r.tarefa, (porTarefa.get(r.tarefa) ?? 0) + ms);
+    const dia = diaLocal(comeco);
+    porDia.set(dia, (porDia.get(dia) ?? 0) + ms);
+  }
+
+  const data = (d, opcoes) => d.toLocaleDateString("pt-BR", opcoes).replace(".", "");
+  const ultimo = new Date(fim);
+  ultimo.setDate(ultimo.getDate() - 1);
+  const titulo = `🐔 Franguinho — semana de ${data(inicio, { day: "2-digit", month: "2-digit" })}` +
+    ` a ${data(ultimo, { day: "2-digit", month: "2-digit" })}`;
+  const total = [...porTarefa.values()].reduce((soma, ms) => soma + ms, 0);
+  if (!total) return `${titulo}\n\nNenhuma tarefa nesta semana.`;
+
+  const dias = [...porDia].filter(([, ms]) => ms > 0).sort(([a], [b]) => a.localeCompare(b));
+  const linhas = [
+    titulo,
+    `Total: ${curto(total)} em ${dias.length} ${dias.length === 1 ? "dia" : "dias"}`,
+    "",
+    "Por tarefa:",
+    ...[...porTarefa].sort((a, b) => b[1] - a[1])
+      .map(([tarefa, ms]) => `• ${tarefa} — ${curto(ms)} (${Math.round((ms / total) * 100)}%)`),
+    "",
+    "Por dia:",
+    ...dias.map(([dia, ms]) =>
+      `• ${data(new Date(`${dia}T12:00`), { weekday: "short", day: "2-digit", month: "2-digit" })} — ${curto(ms)}`),
+  ];
+  return linhas.join("\n");
+}

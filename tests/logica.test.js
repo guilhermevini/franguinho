@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   acessorioVisivel, atalhoDoEvento, comHora, mapaDoAno, nivelDoDia, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
-  recentes, relogio, resumo, sequencias, sugestoes, temporada,
+  recentes, relatorioSemanal, relogio, resumo, sequencias, sugestoes, temporada,
 } from "../ui/logica.js";
 
 // 17/11/2026 é uma terça. Datas montadas no fuso local, como o app faz.
@@ -204,4 +204,32 @@ test("mapaDoAno monta 53 semanas de segunda a domingo até hoje", () => {
   assert.deepEqual(mapa.melhor, { dia: "2026-11-02", ms: 6 * 3600000 });
   assert.deepEqual(mapa.meses.at(-1), { coluna: 49, nome: "nov" }); // 01/11 é domingo, semana de 26/10
   assert.ok(mapa.meses.some((m) => m.nome === "dez"));
+});
+
+test("relatorioSemanal soma a semana certa, por tarefa e por dia", () => {
+  const agora = new Date(em(18, 12)); // quarta, 18/11
+  const registros = [
+    feito("Trabalho", 13, 9, 0, 17, 0), // sexta da semana passada: 8h
+    feito("Trabalho", 16, 9, 0, 12, 0), // segunda: 3h
+    feito("Estudos", 16, 14, 0, 15, 0), // segunda: 1h
+    feito("Trabalho", 17, 9, 0, 10, 0), // terça: 1h
+    { tarefa: "Estudos", inicio: em(18, 11, 0), fim: null }, // rodando: 1h
+  ];
+  const texto = relatorioSemanal(registros, agora);
+  const linhas = texto.split("\n");
+  assert.match(linhas[0], /semana de 16\/11 a 22\/11/);
+  assert.equal(linhas[1], "Total: 6h em 3 dias");
+  assert.ok(texto.includes("• Trabalho — 4h (67%)"));
+  assert.ok(texto.includes("• Estudos — 2h (33%)"));
+  assert.ok(texto.indexOf("Trabalho — 4h") < texto.indexOf("Estudos — 2h"), "maior primeiro");
+  const porDia = linhas.slice(linhas.indexOf("Por dia:") + 1);
+  assert.equal(porDia.length, 3);
+  assert.match(porDia[0], /16\/11 — 4h$/);
+
+  const passada = relatorioSemanal(registros, agora, 1);
+  assert.match(passada, /semana de 09\/11 a 15\/11/);
+  assert.ok(passada.includes("Total: 8h em 1 dia"));
+  assert.ok(passada.includes("• Trabalho — 8h (100%)"));
+
+  assert.match(relatorioSemanal([], agora), /Nenhuma tarefa nesta semana\.$/);
 });

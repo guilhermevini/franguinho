@@ -117,6 +117,8 @@ quanto mais horas (até 1h, 3h, 5h e acima). Passe o mouse ou clique num dia pra
 
 - **Resumo:** horas por tarefa de hoje ou da semana (a partir de segunda), em barrinhas; as menores
   se juntam em "Outras".
+- **Relatório da semana:** o botão **📋 Relatório** monta um texto com total, horas por tarefa (com %)
+  e por dia, desta semana ou da passada, pronto pra copiar e colar num timesheet ou no chat.
 - **Corrigir registros:** clique numa tarefa do histórico para mudar o nome e os horários
   (fim antes do início = passou da meia-noite). Na tarefa rodando, clique em "desde HH:MM ✏️".
 

@@ -50,6 +50,7 @@
     <section class="bloco">
       <div class="titulo-linha">
         <h3>Resumo</h3>
+        <button class="link botao-relatorio" id="botao-relatorio" type="button" title="Texto da semana pra copiar">📋 Relatório</button>
         <div class="abas" id="abas-resumo">
           <button type="button" data-periodo="hoje">Hoje</button>
           <button type="button" data-periodo="semana">Semana</button>
@@ -103,6 +104,21 @@
         <button class="botao comecar" id="ausencia-continuar" type="button">Descontar e continuar</button>
         <button class="pequeno" id="ausencia-terminar" type="button">Terminar quando saí</button>
         <button class="pequeno" id="ausencia-manter" type="button">Foi trabalho, manter</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="fundo-modal" id="modal-relatorio" hidden>
+    <div class="modal relatorio" role="dialog" aria-modal="true" aria-labelledby="relatorio-titulo">
+      <h2 id="relatorio-titulo">Relatório da semana 📋</h2>
+      <div class="abas" id="abas-relatorio">
+        <button type="button" data-semana="0">Esta semana</button>
+        <button type="button" data-semana="1">Semana passada</button>
+      </div>
+      <textarea id="relatorio-texto" readonly rows="12" aria-label="Texto do relatório"></textarea>
+      <div class="acoes-config">
+        <button type="button" class="pequeno" id="relatorio-fechar">Fechar</button>
+        <button type="button" class="pequeno primario" id="relatorio-copiar">📋 Copiar</button>
       </div>
     </div>
   </div>

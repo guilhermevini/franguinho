@@ -14,6 +14,7 @@ use std::sync::{Mutex, MutexGuard};
 use store::Store;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 
 pub struct Franguinho {
@@ -211,6 +212,13 @@ fn salvar_preferencias(
 }
 
 #[tauri::command]
+fn copiar(app: AppHandle, texto: String) -> Result<(), String> {
+    app.clipboard()
+        .write_text(texto)
+        .map_err(|e| format!("Não consegui copiar: {e}"))
+}
+
+#[tauri::command]
 fn versao(app: AppHandle) -> String {
     app.package_info().version.to_string()
 }
@@ -261,6 +269,7 @@ fn main() {
         }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -305,6 +314,7 @@ fn main() {
             salvar_preferencias,
             suspender_atalho,
             abrir_pasta_dados,
+            copiar,
             versao,
             procurar_atualizacao,
             instalar_atualizacao,
