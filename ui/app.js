@@ -23,6 +23,11 @@ let criandoProjeto = false;
 let editando = null; // índice do registro aberto pra edição
 let editandoInicio = false; // ajustando o "desde" da tarefa rodando
 let periodo = "hoje";
+let ausencia = null; // { desde, minutos } enquanto o diálogo de "você voltou" está aberto
+let conquistasFeitas = null; // ids já desbloqueados, pra comemorar só as novas
+let acessorio = lerPreferencia("acessorio");
+
+const ACESSORIOS = { chapeu: "chapéu de festa", oculos: "óculos escuros", laco: "laço", coroa: "coroa" };
 
 const $ = (id) => document.getElementById(id);
 
@@ -36,7 +41,19 @@ function aplicar(novo) {
     comemorandoAte = Date.now() + 3000;
     setTimeout(renderMascote, 3000);
   }
+  anunciarConquistasNovas();
   render();
+}
+
+function anunciarConquistasNovas() {
+  const feitas = conquistas().filter((c) => c.ok);
+  const novas = conquistasFeitas ? feitas.filter((c) => !conquistasFeitas.has(c.id)) : [];
+  conquistasFeitas = new Set(feitas.map((c) => c.id));
+  if (!novas.length) return;
+  const c = novas[0];
+  avisar(`🏆 Conquista: ${c.nome}!` + (c.acessorio ? ` 🎁 Liberou: ${ACESSORIOS[c.acessorio]}.` : ""));
+  comemorandoAte = Date.now() + 3000;
+  setTimeout(renderMascote, 3000);
 }
 
 async function chamar(comando, args) {
@@ -92,8 +109,16 @@ $("abas-resumo").addEventListener("click", (e) => {
   renderResumo();
 });
 
+$("ausencia-continuar").addEventListener("click", () => resolverAusencia(true));
+$("ausencia-terminar").addEventListener("click", () => resolverAusencia(false));
+$("ausencia-manter").addEventListener("click", () => resolverAusencia(null));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && ausencia) resolverAusencia(null);
+});
+
 if (tauri) {
   tauri.event.listen("estado", (e) => aplicar(e.payload));
+  tauri.event.listen("ausencia", (e) => mostrarAusencia(e.payload));
   tauri.event.listen("aviso", (e) => avisar(String(e.payload)));
   tauri.event.listen("focar-campo", () => $("campo-tarefa").focus());
 }
@@ -102,9 +127,11 @@ if (tauri) {
 
 function render() {
   renderMascote();
+  renderNinho();
   renderTarefa();
   renderProjetos();
   renderResumo();
+  renderConquistas();
   renderHistorico();
 }
 
@@ -126,10 +153,14 @@ function renderMascote() {
   const m = $("mascote");
   m.classList.remove("dormindo", "trabalhando", "comemorando");
   m.classList.add(humor());
+  // Só veste o que ainda está liberado (registros apagados podem tirar a conquista).
+  const liberados = new Set(conquistas().filter((c) => c.ok).map((c) => c.acessorio));
+  m.dataset.acessorio = liberados.has(acessorio) ? acessorio : "";
   atualizarFala();
 }
 
 function atualizarFala() {
+  if (ausencia) return; // o diálogo de ausência manda na fala
   const h = humor();
   let fala = "Zzz... me dá uma tarefa pra ciscar?";
   if (h === "comemorando") fala = "Có-có-có! Ovo botado, tarefa feita!";
@@ -384,7 +415,162 @@ function itemEditando(r) {
   return caixa;
 }
 
+// ---------- Ausência ----------
+
+function mostrarAusencia(dados) {
+  ausencia = dados;
+  const r = emAndamento();
+  $("ausencia-texto").replaceChildren(
+    "Você ficou fora ", el("strong", {}, curto(dados.minutos * 60000)),
+    ` (desde ${hora(dados.desde)})` + (r ? " com " : "."),
+    ...(r ? [el("strong", {}, r.tarefa), " rodando. O que eu faço com esse tempo?"] : []));
+  $("ausencia-terminar").textContent = `Terminar às ${hora(dados.desde)}`;
+  $("modal-ausencia").hidden = false;
+  $("fala").textContent = "Opa, você voltou!";
+  $("ausencia-continuar").focus();
+}
+
+async function resolverAusencia(continuar) {
+  const dados = ausencia;
+  ausencia = null;
+  $("modal-ausencia").hidden = true;
+  if (continuar === null) {
+    atualizarFala();
+    return;
+  }
+  await chamar("descontar_ausencia", { desde: dados.desde, continuar });
+  if (continuar) avisar(`Descontei ${curto(dados.minutos * 60000)}. Bora continuar! 🐔`);
+}
+
+// ---------- Ovos e conquistas ----------
+
+/// Tudo calculado a partir dos registros: nada extra pra salvar.
+function conquistas() {
+  const feitos = estado.registros.filter((r) => r.fim);
+  const dias = new Map(); // dia → { ms, projetos }
+  for (const r of feitos) {
+    const dia = new Date(r.inicio).toDateString();
+    const d = dias.get(dia) ?? { ms: 0, projetos: new Set() };
+    d.ms += duracao(r);
+    if (r.projeto) d.projetos.add(r.projeto);
+    dias.set(dia, d);
+  }
+  const horaDe = (iso) => new Date(iso).getHours();
+  const horas = Math.floor(feitos.reduce((s, r) => s + duracao(r), 0) / 3600000);
+  const melhor = sequencias().melhor;
+
+  return [
+    { id: "primeiro", emoji: "🥚", nome: "Primeiro ovo", desc: "Termine sua primeira tarefa.",
+      prog: [feitos.length, 1] },
+    { id: "duzia", emoji: "🎉", nome: "Uma dúzia", desc: "Termine 12 tarefas.",
+      prog: [feitos.length, 12], acessorio: "chapeu" },
+    { id: "foco", emoji: "🎯", nome: "Foco de ferro", desc: "Fique 90 minutos seguidos numa tarefa.",
+      ok: feitos.some((r) => duracao(r) >= 90 * 60000), acessorio: "oculos" },
+    { id: "versatil", emoji: "🌈", nome: "Ciscador versátil", desc: "Trabalhe em 3 projetos no mesmo dia.",
+      ok: [...dias.values()].some((d) => d.projetos.size >= 3), acessorio: "laco" },
+    { id: "madrugador", emoji: "🌅", nome: "Madrugador", desc: "Comece uma tarefa antes das 7h.",
+      ok: feitos.some((r) => horaDe(r.inicio) < 7 && horaDe(r.inicio) >= 4) },
+    { id: "coruja", emoji: "🦉", nome: "Coruja", desc: "Termine uma tarefa depois das 22h.",
+      ok: feitos.some((r) => horaDe(r.fim) >= 22 || horaDe(r.fim) < 4) },
+    { id: "maratona", emoji: "🏃", nome: "Maratona", desc: "Some 6 horas num dia.",
+      ok: [...dias.values()].some((d) => d.ms >= 6 * 3600000) },
+    { id: "sequencia", emoji: "🔥", nome: "Pegando fogo", desc: "Use o Franguinho 5 dias seguidos.",
+      prog: [melhor, 5] },
+    { id: "cem-horas", emoji: "⏳", nome: "Cem horas", desc: "Acumule 100 horas registradas.",
+      prog: [horas, 100] },
+    { id: "ouro", emoji: "👑", nome: "Ovos de ouro", desc: "Termine 100 tarefas.",
+      prog: [feitos.length, 100], acessorio: "coroa" },
+  ].map((c) => ({ ...c, ok: c.ok ?? c.prog[0] >= c.prog[1] }));
+}
+
+/// Dias seguidos com pelo menos uma tarefa terminada: a sequência atual
+/// (vale até ontem, pra não "zerar" de manhã) e a melhor de todas.
+function sequencias() {
+  const dias = new Set(estado.registros.filter((r) => r.fim).map((r) => diaLocal(r.inicio)));
+  const ordenados = [...dias].sort();
+  let melhor = 0;
+  let corrida = 0;
+  let anterior = null;
+  for (const d of ordenados) {
+    corrida = anterior && diasEntre(anterior, d) === 1 ? corrida + 1 : 1;
+    melhor = Math.max(melhor, corrida);
+    anterior = d;
+  }
+  let atual = 0;
+  const cursor = new Date();
+  if (!dias.has(diaLocal(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (dias.has(diaLocal(cursor))) {
+    atual++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return { atual, melhor };
+}
+
+function renderNinho() {
+  const hoje = new Date().toDateString();
+  const ovos = estado.registros.filter((r) => r.fim && new Date(r.inicio).toDateString() === hoje).length;
+  const { atual } = sequencias();
+  const caixa = $("ninho-hoje");
+  caixa.replaceChildren();
+  if (ovos) caixa.append(el("span", { title: "Tarefas terminadas hoje" }, `🥚 ${ovos} hoje`));
+  if (atual >= 2) caixa.append(el("span", { title: "Dias seguidos com tarefas" }, `🔥 ${atual} dias seguidos`));
+}
+
+function renderConquistas() {
+  const lista = conquistas();
+  const caixa = $("conquistas");
+  caixa.replaceChildren();
+  $("contador-conquistas").textContent = `${lista.filter((c) => c.ok).length}/${lista.length}`;
+
+  for (const c of lista) {
+    const vestindo = c.ok && c.acessorio && c.acessorio === acessorio;
+    const card = el("button", { type: "button", className: "conquista", title: c.desc },
+      el("span", { className: "emoji" }, c.emoji),
+      el("span", { className: "nome" }, c.nome),
+      el("span", { className: "desc" }, c.ok && c.acessorio
+        ? (vestindo ? `Vestindo: ${ACESSORIOS[c.acessorio]}` : `Vestir ${ACESSORIOS[c.acessorio]}`)
+        : c.ok ? "Feito!" : c.desc));
+    card.classList.add(c.ok ? "feita" : "bloqueada");
+    if (c.acessorio) card.append(el("span", { className: "presente", title: `Libera: ${ACESSORIOS[c.acessorio]}` }, "🎁"));
+    if (!c.ok && c.prog && c.prog[1] > 1) {
+      const barra = el("div");
+      barra.style.setProperty("--p", `${Math.min(100, (c.prog[0] / c.prog[1]) * 100)}%`);
+      card.append(el("span", { className: "progresso", title: `${c.prog[0]}/${c.prog[1]}` }, barra));
+    }
+    if (c.ok && c.acessorio) {
+      card.classList.add("vestivel");
+      if (vestindo) card.classList.add("vestindo");
+      card.addEventListener("click", () => {
+        acessorio = vestindo ? "" : c.acessorio;
+        gravarPreferencia("acessorio", acessorio);
+        renderMascote();
+        renderConquistas();
+      });
+    }
+    caixa.append(card);
+  }
+}
+
 // ---------- Utilidades ----------
+
+/// Preferência só de visual: guardada no navegador do app, sem drama se sumir.
+function lerPreferencia(chave) {
+  try { return localStorage.getItem(`franguinho.${chave}`) ?? ""; } catch { return ""; }
+}
+
+function gravarPreferencia(chave, valor) {
+  try { localStorage.setItem(`franguinho.${chave}`, valor); } catch { /* sem armazenamento */ }
+}
+
+/// "AAAA-MM-DD" no fuso local (ordenável).
+function diaLocal(data) {
+  const d = new Date(data);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function diasEntre(a, b) {
+  return Math.round((new Date(`${b}T12:00`) - new Date(`${a}T12:00`)) / 86400000);
+}
 
 function el(tag, props, ...filhos) {
   const n = Object.assign(document.createElement(tag), props);
@@ -484,6 +670,15 @@ function imitacaoDoBackend() {
       e.registros.sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
       return copia();
     },
+    descontar_ausencia({ desde, continuar }) {
+      const i = e.registros.findIndex((r) => !r.fim);
+      if (i < 0) throw "Não tem tarefa rodando.";
+      const atual = { ...e.registros[i] };
+      if (desde <= atual.inicio) e.registros.splice(i, 1);
+      else e.registros[i].fim = desde;
+      if (continuar) e.registros.push({ ...atual, inicio: new Date().toISOString(), fim: null });
+      return copia();
+    },
     apagar_registro({ indice }) { e.registros.splice(indice, 1); return copia(); },
     adicionar_projeto({ nome }) {
       if (!e.projetos.includes(nome.trim())) e.projetos.push(nome.trim());
@@ -493,6 +688,9 @@ function imitacaoDoBackend() {
     exportar_csv: () => "(modo navegador: nada foi exportado)",
     atalho: () => "Ctrl+Alt+F",
   };
+  // No navegador, dá pra testar o diálogo com simularAusencia(25) no console.
+  window.simularAusencia = (minutos) =>
+    mostrarAusencia({ desde: new Date(Date.now() - minutos * 60000).toISOString(), minutos });
   return async (comando, args) => comandos[comando](args ?? {});
 }
 

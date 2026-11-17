@@ -431,3 +431,96 @@ input[type="time"]:focus, select:focus { border-color: var(--laranja); }
 
 .rodape { text-align: center; font-size: 12px; font-weight: 700; color: var(--tinta-suave); }
 kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px solid var(--linha); border-bottom-width: 3px; border-radius: 6px; padding: 0 5px; }
+
+/* ---------- Acessórios ---------- */
+
+.mascote .acessorio { display: none; }
+.mascote .acessorio .peca { stroke: #5a3c28; stroke-width: 2.5; stroke-linejoin: round; }
+.mascote[data-acessorio="chapeu"] .chapeu,
+.mascote[data-acessorio="oculos"] .oculos,
+.mascote[data-acessorio="laco"] .laco,
+.mascote[data-acessorio="coroa"] .coroa { display: inline; }
+.mascote[data-acessorio="chapeu"] .crista,
+.mascote[data-acessorio="coroa"] .crista { display: none; }
+
+/* ---------- Ninho de hoje ---------- */
+
+.ninho-hoje { display: flex; gap: 8px; font-size: 13px; font-weight: 800; color: var(--tinta-suave); }
+.ninho-hoje span { background: var(--cartao); border-radius: 999px; padding: 3px 10px; box-shadow: 0 2px 0 rgba(90, 60, 40, 0.08); }
+.ninho-hoje:empty { display: none; }
+
+/* ---------- Conquistas ---------- */
+
+.contador { font-size: 13px; font-weight: 900; color: var(--laranja); }
+.conquistas { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+
+.conquista {
+  font: inherit;
+  color: var(--tinta);
+  text-align: left;
+  background: var(--cartao);
+  border: 2.5px solid transparent;
+  border-radius: 16px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  align-items: center;
+  box-shadow: 0 3px 0 rgba(90, 60, 40, 0.08);
+  cursor: default;
+}
+.conquista .emoji { font-size: 26px; grid-row: span 2; }
+.conquista .nome { font-weight: 900; font-size: 14px; }
+.conquista .desc { font-size: 12px; font-weight: 600; color: var(--tinta-suave); line-height: 1.25; }
+.conquista .progresso { grid-column: 2; height: 6px; background: var(--fundo); border-radius: 999px; overflow: hidden; margin-top: 4px; }
+.conquista .progresso div { height: 100%; width: var(--p); background: var(--laranja); border-radius: 999px; }
+.conquista.bloqueada .emoji { filter: grayscale(1); opacity: 0.45; }
+.conquista.bloqueada .nome { color: var(--tinta-suave); }
+.conquista.vestivel { cursor: pointer; }
+.conquista.vestivel:hover { border-color: var(--linha); }
+.conquista.vestindo { border-color: var(--laranja); background: color-mix(in srgb, var(--laranja) 10%, var(--cartao)); }
+
+/* ---------- Ausência ---------- */
+
+.fundo-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(42, 33, 27, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 10;
+  animation: aparece 0.2s ease-out;
+}
+.modal {
+  background: var(--cartao);
+  border-radius: 24px;
+  padding: 22px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: var(--sombra);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+  animation: pulo-modal 0.35s cubic-bezier(.2, 1.4, .5, 1);
+}
+.modal h2 { font-size: 21px; font-weight: 900; }
+.modal p { font-weight: 700; color: var(--tinta-suave); }
+.modal p strong { color: var(--tinta); }
+.modal-acoes { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.modal-acoes .botao { min-width: 0; width: 100%; }
+.modal-acoes .pequeno { padding: 9px 12px; font-size: 14px; }
+
+@keyframes aparece { from { opacity: 0; } }
+@keyframes pulo-modal { from { transform: scale(0.85); opacity: 0; } }
+.conquista { position: relative; }
+.conquista .presente { position: absolute; top: -7px; right: -5px; font-size: 16px; transform: rotate(12deg); }
+.conquista.bloqueada .presente { filter: grayscale(0.6); opacity: 0.7; }
+
+.botao:focus-visible, .pequeno:focus-visible, .chip:focus-visible, .conquista:focus-visible {
+  outline: 3px solid var(--tinta);
+  outline-offset: 2px;
+}
+.botao:focus:not(:focus-visible) { outline: none; }

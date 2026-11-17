@@ -32,6 +32,27 @@
             <path class="olho olho-fechado" d="M101 81 q7 5 14 0"/>
             <path class="olho olho-feliz" d="M101 83 l7 -7 l7 7"/>
             <path class="bico" d="M132 84 L153 93 L132 102 Z"/>
+            <!-- Acessórios liberados por conquistas -->
+            <g class="acessorio chapeu">
+              <path class="peca" d="M68 50 L104 46 L83 6 Z" fill="#4f8fdc"/>
+              <path d="M75 35 L96 33 M79 21 L89 20" stroke="#ffd64f" stroke-width="4" stroke-linecap="round"/>
+              <circle class="peca" cx="83" cy="6" r="6" fill="#e6463c"/>
+            </g>
+            <g class="acessorio oculos">
+              <path d="M98 76 L66 72" stroke="#3a2a20" stroke-width="3" stroke-linecap="round"/>
+              <rect x="97" y="72" width="24" height="15" rx="6" fill="#3a2a20"/>
+              <path d="M101 76 h6" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+            </g>
+            <g class="acessorio laco">
+              <path class="peca" d="M114 52 L100 42 L102 60 Z M114 52 L128 42 L126 60 Z" fill="#ff7eb6"/>
+              <circle class="peca" cx="114" cy="52" r="5" fill="#ff7eb6"/>
+            </g>
+            <g class="acessorio coroa">
+              <path class="peca" d="M70 46 L70 24 L80 34 L90 18 L100 34 L110 24 L110 46 Z" fill="#ffc21a"/>
+              <circle cx="90" cy="38" r="4" fill="#e6463c"/>
+              <circle cx="78" cy="40" r="3" fill="#4f8fdc"/>
+              <circle cx="102" cy="40" r="3" fill="#5fae4c"/>
+            </g>
           </g>
           <g class="milho">
             <circle cx="140" cy="149" r="3.5"/>
@@ -47,6 +68,7 @@
         </svg>
       </button>
       <p class="balao" id="fala">Zzz... me dá uma tarefa pra ciscar?</p>
+      <div class="ninho-hoje" id="ninho-hoje"></div>
     </section>
 
     <section class="cartao" id="cartao-tarefa">
@@ -84,6 +106,15 @@
       <div class="cartao resumo" id="resumo"></div>
     </section>
 
+    <section class="bloco">
+      <div class="titulo-linha">
+        <h3>Conquistas</h3>
+        <span class="contador" id="contador-conquistas"></span>
+      </div>
+      <div class="conquistas" id="conquistas"></div>
+      <p class="dica">As com 🎁 liberam acessórios: clique numa conquista feita para vestir o franguinho.</p>
+    </section>
+
     <section class="bloco historico">
       <div class="titulo-linha">
         <h3>Ninho de tarefas</h3>
@@ -95,6 +126,18 @@
 
     <p class="rodape">⌨️ <kbd id="atalho">Ctrl+Alt+F</kbd> termina a tarefa ou abre o Franguinho, de qualquer app.</p>
   </main>
+
+  <div class="fundo-modal" id="modal-ausencia" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ausencia-titulo">
+      <h2 id="ausencia-titulo">Opa, você voltou! 🐔</h2>
+      <p id="ausencia-texto"></p>
+      <div class="modal-acoes">
+        <button class="botao comecar" id="ausencia-continuar" type="button">Descontar e continuar</button>
+        <button class="pequeno" id="ausencia-terminar" type="button">Terminar quando saí</button>
+        <button class="pequeno" id="ausencia-manter" type="button">Foi trabalho, manter</button>
+      </div>
+    </div>
+  </div>
 
   <div class="aviso" id="aviso" role="status" hidden></div>
 

@@ -26,7 +26,7 @@ No Linux, instale antes as dependências do WebKitGTK
 ([lista completa](https://tauri.app/start/prerequisites/#linux)):
 
 ```sh
-sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxss-dev
 ```
 
 ### Mexendo só no visual
@@ -48,6 +48,18 @@ Clicar noutro projeto troca de tarefa; passe o mouse e clique no **×** para rem
   pronto pra digitar. Mude em `ATALHO`, no `src-tauri/src/sistema.rs`.
 - **Esqueceu ligado?** Depois de 3h seguidas (`ESQUECIDO_HORAS`), o franguinho reclama na janela e manda
   uma notificação do sistema — e de novo a cada hora a mais.
+
+- **Você voltou?** Se você some por 10 min (`AUSENTE_MIN`) — sem mexer no mouse/teclado ou com o
+  computador dormindo — com uma tarefa rodando, ao voltar o franguinho pergunta se é pra descontar e
+  continuar, terminar na hora em que você saiu ou manter tudo.
+- **Uma cópia só:** abrir o app de novo só traz a janela que já está aberta.
+
+## Ovos e conquistas
+
+Cada tarefa terminada vira um 🥚 no ninho do dia, e dias seguidos de uso acendem uma 🔥 sequência.
+Dez conquistas (primeiro ovo, foco de 90 min, madrugador, coruja, maratona…) são calculadas a partir
+dos registros; quatro delas liberam acessórios pro franguinho — chapéu de festa, óculos escuros, laço
+e coroa. Clique numa conquista feita para vestir.
 
 ## Resumo e correções
 

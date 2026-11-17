@@ -1,8 +1,9 @@
-//! Integração com o sistema: ícone na bandeja/barra de menu, atalho global e o
-//! aviso de "esqueceu ligado?".
+//! Integração com o sistema: ícone na bandeja/barra de menu, atalho global, o
+//! aviso de "esqueceu ligado?" e a detecção de ausência.
 
 use crate::{Estado, Franguinho};
 use chrono::{DateTime, Local, TimeDelta};
+use serde::Serialize;
 use std::{thread, time::Duration};
 use tauri::{
     AppHandle, Emitter, Manager, Wry,
@@ -17,7 +18,18 @@ use tauri_plugin_notification::NotificationExt;
 pub const ATALHO: &str = "Ctrl+Alt+F";
 /// A partir de quantas horas seguidas o franguinho desconfia que você esqueceu.
 const ESQUECIDO_HORAS: i64 = 3;
+/// Sem mexer no mouse/teclado por esse tempo (ou com o computador dormindo),
+/// o franguinho pergunta o que fazer com o tempo ausente quando você voltar.
+const AUSENTE_MIN: i64 = 10;
+const INTERVALO: Duration = Duration::from_secs(15);
 const BANDEJA: &str = "franguinho";
+
+/// Enviado à janela no evento "ausencia" quando você volta.
+#[derive(Clone, Serialize)]
+struct Ausencia {
+    desde: DateTime<Local>,
+    minutos: i64,
+}
 
 pub fn criar_bandeja(app: &AppHandle) -> tauri::Result<()> {
     let estado = app.state::<Franguinho>().ler();
@@ -165,20 +177,52 @@ pub fn mostrar_janela(app: &AppHandle) {
     }
 }
 
-/// De tempos em tempos: atualiza o relógio da bandeja e, se uma tarefa passou de
-/// ESQUECIDO_HORAS, manda uma notificação (uma por hora a mais).
+/// De tempos em tempos: atualiza o relógio da bandeja, avisa de tarefas
+/// esquecidas ligadas e percebe quando você saiu e voltou.
 pub fn vigiar(app: AppHandle) {
     thread::spawn(move || {
         let mut avisado: Option<(DateTime<Local>, i64)> = None;
+        let mut ausente_desde: Option<DateTime<Local>> = None;
+        let mut ultima_volta = Local::now();
         loop {
-            thread::sleep(Duration::from_secs(20));
+            thread::sleep(INTERVALO);
+            let agora = Local::now();
             let estado = app.state::<Franguinho>().ler();
             if let Some(bandeja) = app.tray_by_id(BANDEJA) {
                 atualizar_titulo(&bandeja, &estado);
             }
             let Some(r) = estado.em_andamento() else {
+                ausente_desde = None;
+                ultima_volta = agora;
                 continue;
             };
+
+            // Ausência: ocioso no sistema, ou o computador dormiu (o laço parou).
+            let limite = TimeDelta::minutes(AUSENTE_MIN);
+            let ocioso = user_idle::UserIdle::get_time()
+                .map(|t| TimeDelta::seconds(t.as_seconds() as i64))
+                .unwrap_or_default();
+            let pulo = agora - ultima_volta;
+            ultima_volta = agora;
+            if pulo > limite {
+                let saiu = agora - pulo;
+                ausente_desde = Some(ausente_desde.map_or(saiu, |d| d.min(saiu)));
+            } else if ocioso >= limite && ausente_desde.is_none() {
+                ausente_desde = Some(agora - ocioso);
+            }
+            if let Some(desde) = ausente_desde
+                && ocioso < TimeDelta::minutes(1)
+            {
+                ausente_desde = None;
+                let desde = desde.max(r.inicio);
+                let minutos = (agora - desde).num_minutes();
+                if minutos >= AUSENTE_MIN {
+                    mostrar_janela(&app);
+                    let _ = app.emit("ausencia", Ausencia { desde, minutos });
+                }
+            }
+
+            // Esqueceu ligado: uma notificação por hora depois de ESQUECIDO_HORAS.
             let horas = r.duracao().num_hours();
             let ja_avisado = avisado
                 .filter(|(inicio, _)| *inicio == r.inicio)

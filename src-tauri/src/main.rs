@@ -88,6 +88,37 @@ impl Franguinho {
         })
     }
 
+    /// Desconta uma ausência: a tarefa rodando termina quando você saiu e, se
+    /// `continuar`, recomeça agora com o mesmo nome e projeto.
+    pub fn descontar_ausencia(
+        &self,
+        app: &AppHandle,
+        desde: DateTime<Local>,
+        continuar: bool,
+    ) -> Resultado {
+        self.alterar(app, |e| {
+            let i = e
+                .registros
+                .iter()
+                .position(|r| r.fim.is_none())
+                .ok_or("Não tem tarefa rodando.")?;
+            let atual = e.registros[i].clone();
+            if desde <= atual.inicio {
+                e.registros.remove(i); // saiu logo que começou: não sobra nada
+            } else {
+                e.registros[i].fim = Some(desde.min(Local::now()));
+            }
+            if continuar {
+                e.registros.push(Registro {
+                    inicio: Local::now(),
+                    fim: None,
+                    ..atual
+                });
+            }
+            Ok(())
+        })
+    }
+
     pub fn terminar(&self, app: &AppHandle) -> Resultado {
         self.alterar(app, |e| {
             if let Some(atual) = e.registros.iter_mut().find(|r| r.fim.is_none()) {
@@ -122,6 +153,16 @@ fn comecar(
 #[tauri::command]
 fn terminar(app: AppHandle, f: State<Franguinho>) -> Resultado {
     f.terminar(&app)
+}
+
+#[tauri::command]
+fn descontar_ausencia(
+    app: AppHandle,
+    f: State<Franguinho>,
+    desde: DateTime<Local>,
+    continuar: bool,
+) -> Resultado {
+    f.descontar_ausencia(&app, desde, continuar)
 }
 
 /// Corrige um registro (nome, projeto e horários), pra quando você esquece de
@@ -222,6 +263,11 @@ fn main() {
     };
 
     tauri::Builder::default()
+        // Abrir o app de novo só traz a janela da cópia que já está rodando,
+        // em vez de ter dois franguinhos escrevendo no mesmo arquivo.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            sistema::mostrar_janela(app);
+        }))
         .plugin(tauri_plugin_notification::init())
         .manage(Franguinho {
             store,
@@ -248,6 +294,7 @@ fn main() {
             carregar,
             comecar,
             terminar,
+            descontar_ausencia,
             editar_registro,
             apagar_registro,
             adicionar_projeto,
