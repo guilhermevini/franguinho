@@ -277,7 +277,7 @@ pub fn vigiar(app: AppHandle) {
             };
 
             // Ausência: ocioso no sistema, ou o computador dormiu (o laço parou).
-            let limite = TimeDelta::minutes(config.ausente_min.into());
+            let limite = TimeDelta::minutes(i64::from(config.ausente_min));
             let ocioso = user_idle::UserIdle::get_time()
                 .map(|t| TimeDelta::seconds(t.as_seconds() as i64))
                 .unwrap_or_default();
@@ -297,7 +297,7 @@ pub fn vigiar(app: AppHandle) {
                 ausente_desde = None;
                 let desde = desde.max(r.inicio);
                 let minutos = (agora - desde).num_minutes();
-                if minutos >= config.ausente_min.into() {
+                if minutos >= i64::from(config.ausente_min) {
                     mostrar_janela(&app);
                     let _ = app.emit(
                         "ausencia",
