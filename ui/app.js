@@ -1,5 +1,5 @@
 import {
-  acessorioVisivel, atalhoDoEvento, comHora, conquistas as calcularConquistas, curto, duracao,
+  acessorioVisivel, atalhoDoEvento, comHora, mapaDoAno, conquistas as calcularConquistas, curto, duracao,
   horaCampo, nomeDoDia, recentes, relogio, resumo, sugestoes, sequencias as calcularSequencias, temporada,
 } from "./logica.js";
 import { svgMascote } from "./mascote.js";
@@ -267,6 +267,7 @@ function render() {
   renderAtalhos();
   renderSugestoes();
   renderResumo();
+  renderMapa();
   renderConquistas();
   renderHistorico();
 }
@@ -522,6 +523,55 @@ function itemEditando(r) {
   return caixa;
 }
 
+// ---------- Mapa de calor ----------
+
+const PASSO = 12; // tamanho do quadradinho (10) + espaço (2), em unidades do SVG
+const TOPO = 14; // espaço dos nomes dos meses
+
+function renderMapa() {
+  const mapa = mapaDoAno(estado.registros);
+  const svg = $("mapa");
+  const ns = "http://www.w3.org/2000/svg";
+  const novo = (tag, attrs, texto) => {
+    const n = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (texto) n.textContent = texto;
+    return n;
+  };
+  svg.setAttribute("viewBox", `0 0 ${mapa.semanas.length * PASSO} ${TOPO + 7 * PASSO}`);
+  svg.replaceChildren();
+
+  let ultimaColuna = -10;
+  for (const m of mapa.meses) {
+    if (m.coluna - ultimaColuna < 3) continue; // não encavala os nomes
+    svg.append(novo("text", { x: m.coluna * PASSO, y: 10, class: "mes" }, m.nome));
+    ultimaColuna = m.coluna;
+  }
+
+  const hoje = new Date().toDateString();
+  mapa.semanas.forEach((semana, s) => semana.forEach((d, i) => {
+    if (d.futuro) return;
+    const texto = `${diaPorExtenso(d.dia)}: ${d.ms ? curto(d.ms) : "nada"}`;
+    const quadrado = novo("rect", {
+      x: s * PASSO, y: TOPO + i * PASSO, width: 10, height: 10, rx: 2.5,
+      class: `n${d.nivel}` + (new Date(`${d.dia}T12:00`).toDateString() === hoje ? " hoje" : ""),
+    });
+    quadrado.append(novo("title", {}, texto));
+    quadrado.addEventListener("click", () => ($("mapa-legenda").textContent = texto));
+    svg.append(quadrado);
+  }));
+
+  $("mapa-total").textContent = mapa.total ? curto(mapa.total) : "";
+  $("mapa-legenda").textContent = mapa.diasAtivos
+    ? `🥚 ${mapa.diasAtivos} ${mapa.diasAtivos === 1 ? "dia" : "dias"} com tarefas · melhor dia ` +
+      `${diaPorExtenso(mapa.melhor.dia)} (${curto(mapa.melhor.ms)})`
+    : "Seu ano no ninho começa hoje 🐣";
+}
+
+function diaPorExtenso(dia) {
+  return new Date(`${dia}T12:00`).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+}
+
 // ---------- Ausência ----------
 
 function mostrarAusencia(dados) {
@@ -719,4 +769,5 @@ setInterval(() => {
 setInterval(() => {
   atualizarFala();
   renderResumo();
+  renderMapa();
 }, 30000);

@@ -108,6 +108,11 @@ Em datas especiais o franguinho se veste sozinho e muda as falas: 🎭 Carnaval 
 (gorro) e 🎆 ano novo (chapéu de festa). Carnaval e Páscoa são calculados todo ano. Um acessório
 escolhido nas conquistas tem prioridade sobre o da temporada.
 
+## Ano no ninho
+
+Um mapa de calor das últimas 53 semanas, no estilo do GitHub: cada quadradinho é um dia, mais laranja
+quanto mais horas (até 1h, 3h, 5h e acima). Passe o mouse ou clique num dia pra ver as horas dele.
+
 ## Resumo e correções
 
 - **Resumo:** horas por tarefa de hoje ou da semana (a partir de segunda), em barrinhas; as menores

@@ -237,3 +237,54 @@ export function atalhoDoEvento(e, mac = false) {
   if (e.metaKey) mods.push(mac ? "Cmd" : "Super");
   return [...mods, tecla].join("+");
 }
+
+// ---------- Mapa de calor ----------
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/// Nível de cor de um dia: 0 (nada), até 1h, até 3h, até 5h, mais que isso.
+export function nivelDoDia(ms) {
+  if (ms <= 0) return 0;
+  if (ms < 3600000) return 1;
+  if (ms < 3 * 3600000) return 2;
+  if (ms < 5 * 3600000) return 3;
+  return 4;
+}
+
+/// As últimas `semanas` semanas (segunda a domingo), terminando na semana de
+/// hoje, com o tempo de cada dia. Dias depois de hoje vêm marcados `futuro`.
+export function mapaDoAno(registros, agora = new Date(), semanas = 53) {
+  const porDia = new Map();
+  for (const r of registros) {
+    const dia = diaLocal(r.inicio);
+    porDia.set(dia, (porDia.get(dia) ?? 0) + duracao(r, agora));
+  }
+
+  const hoje = diaLocal(agora);
+  const cursor = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  cursor.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7) - (semanas - 1) * 7); // segunda
+
+  const colunas = [];
+  const meses = [];
+  let melhor = null;
+  let total = 0;
+  let diasAtivos = 0;
+  for (let s = 0; s < semanas; s++) {
+    const semana = [];
+    for (let d = 0; d < 7; d++) {
+      const dia = diaLocal(cursor);
+      const ms = porDia.get(dia) ?? 0;
+      const futuro = dia > hoje;
+      semana.push({ dia, ms, nivel: nivelDoDia(ms), futuro });
+      if (!futuro && ms > 0) {
+        total += ms;
+        diasAtivos++;
+        if (!melhor || ms > melhor.ms) melhor = { dia, ms };
+      }
+      if (cursor.getDate() === 1) meses.push({ coluna: s, nome: MESES[cursor.getMonth()] });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    colunas.push(semana);
+  }
+  return { semanas: colunas, meses, total, diasAtivos, melhor };
+}

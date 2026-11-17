@@ -630,3 +630,22 @@ kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px so
 .botao-fixar { margin-top: 6px; }
 .etiqueta:empty { display: none; }
 .chip.recente.ativo { background: var(--cor); border-style: solid; }
+
+/* ---------- Mapa de calor ---------- */
+
+.cartao.mapa { padding: 14px 14px 10px; border-radius: 20px; display: flex; flex-direction: column; gap: 8px; }
+#mapa { width: 100%; height: auto; display: block; }
+#mapa .mes { font: 800 9px "Nunito", sans-serif; fill: var(--tinta-suave); }
+#mapa rect { cursor: pointer; }
+#mapa rect:hover { stroke: var(--tinta); stroke-width: 1.2; }
+#mapa rect.hoje { stroke: var(--tinta); stroke-width: 1.5; }
+
+.mapa .n0, .legenda .n0 { fill: var(--fundo-2); background: var(--fundo-2); }
+.mapa .n1, .legenda .n1 { fill: color-mix(in srgb, var(--laranja) 30%, var(--cartao)); background: color-mix(in srgb, var(--laranja) 30%, var(--cartao)); }
+.mapa .n2, .legenda .n2 { fill: color-mix(in srgb, var(--laranja) 55%, var(--cartao)); background: color-mix(in srgb, var(--laranja) 55%, var(--cartao)); }
+.mapa .n3, .legenda .n3 { fill: color-mix(in srgb, var(--laranja) 80%, var(--cartao)); background: color-mix(in srgb, var(--laranja) 80%, var(--cartao)); }
+.mapa .n4, .legenda .n4 { fill: color-mix(in srgb, var(--laranja) 100%, #000 12%); background: color-mix(in srgb, var(--laranja) 100%, #000 12%); }
+
+.mapa-rodape { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.legenda { display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--tinta-suave); }
+.legenda i { width: 10px; height: 10px; border-radius: 2.5px; display: inline-block; }

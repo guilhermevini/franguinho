@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  acessorioVisivel, atalhoDoEvento, comHora, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
+  acessorioVisivel, atalhoDoEvento, comHora, mapaDoAno, nivelDoDia, conquistas, curto, diasEntre, duracao, horaCampo, nomeDoDia, pascoa,
   recentes, relogio, resumo, sequencias, sugestoes, temporada,
 } from "../ui/logica.js";
 
@@ -165,4 +165,43 @@ test("atalhoDoEvento monta a combinação e ignora teclas soltas", () => {
   assert.equal(atalhoDoEvento(ev("KeyF")), null, "sem modificador");
   assert.equal(atalhoDoEvento(ev("KeyF", { shiftKey: true })), null, "só Shift não basta");
   assert.equal(atalhoDoEvento(ev("ControlLeft", { ctrlKey: true })), null, "só o modificador");
+});
+
+test("nivelDoDia segue as faixas de horas", () => {
+  const H = 3600000;
+  assert.deepEqual([0, 1, H - 1, H, 3 * H - 1, 3 * H, 5 * H - 1, 5 * H, 12 * H].map(nivelDoDia),
+    [0, 1, 1, 2, 2, 3, 3, 4, 4]);
+});
+
+test("mapaDoAno monta 53 semanas de segunda a domingo até hoje", () => {
+  const agora = new Date(em(17, 15)); // terça, 17/11/2026
+  const registros = [
+    feito("a", 17, 9, 0, 11, 30), // 2h30 hoje
+    feito("b", 17, 13, 0, 13, 30),
+    feito("c", 2, 9, 0, 15, 0), // 6h no dia 02/11
+    { tarefa: "rodando", inicio: em(17, 14, 30), fim: null }, // +30min
+    feito("velho", 1, 9, 0, 10, 0),
+  ];
+  registros[4].inicio = new Date(2025, 0, 5, 9).toISOString(); // fora da janela
+  registros[4].fim = new Date(2025, 0, 5, 10).toISOString();
+  const mapa = mapaDoAno(registros, agora);
+
+  assert.equal(mapa.semanas.length, 53);
+  assert.ok(mapa.semanas.every((s) => s.length === 7));
+  assert.equal(new Date(`${mapa.semanas[0][0].dia}T12:00`).getDay(), 1, "começa numa segunda");
+
+  const ultima = mapa.semanas.at(-1);
+  assert.equal(ultima[0].dia, "2026-11-16"); // segunda desta semana
+  const hoje = ultima[1];
+  assert.equal(hoje.dia, "2026-11-17");
+  assert.equal(hoje.ms, 3.5 * 3600000);
+  assert.equal(hoje.nivel, 3);
+  assert.ok(ultima[2].futuro && ultima[6].futuro);
+  assert.ok(!hoje.futuro);
+
+  assert.equal(mapa.diasAtivos, 2);
+  assert.equal(mapa.total, 9.5 * 3600000);
+  assert.deepEqual(mapa.melhor, { dia: "2026-11-02", ms: 6 * 3600000 });
+  assert.deepEqual(mapa.meses.at(-1), { coluna: 49, nome: "nov" }); // 01/11 é domingo, semana de 26/10
+  assert.ok(mapa.meses.some((m) => m.nome === "dez"));
 });
