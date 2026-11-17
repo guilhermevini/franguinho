@@ -13,6 +13,10 @@ pub struct Config {
     pub esquecido_horas: u32,
     /// Pergunta sobre ausência depois de tantos minutos parado (0 desliga).
     pub ausente_min: u32,
+    /// Modo Pomodoro: blocos de foco com pausa no meio.
+    pub pomodoro: bool,
+    pub foco_min: u32,
+    pub pausa_min: u32,
 }
 
 impl Default for Config {
@@ -21,6 +25,9 @@ impl Default for Config {
             atalho: "Ctrl+Alt+F".into(),
             esquecido_horas: 3,
             ausente_min: 10,
+            pomodoro: false,
+            foco_min: 25,
+            pausa_min: 5,
         }
     }
 }
@@ -39,6 +46,12 @@ impl Config {
         }
         if self.ausente_min > 240 {
             return Err("A ausência vai até 240 minutos.".into());
+        }
+        if !(5..=120).contains(&self.foco_min) {
+            return Err("O foco do Pomodoro vai de 5 a 120 minutos.".into());
+        }
+        if !(1..=60).contains(&self.pausa_min) {
+            return Err("A pausa do Pomodoro vai de 1 a 60 minutos.".into());
         }
         Ok(self)
     }
@@ -85,6 +98,20 @@ mod testes {
         c.esquecido_horas = 3;
         c.ausente_min = 241;
         assert!(c.validado().is_err());
+    }
+
+    #[test]
+    fn limites_do_pomodoro() {
+        let com = |foco_min, pausa_min| Config {
+            foco_min,
+            pausa_min,
+            ..Config::default()
+        };
+        assert!(com(25, 5).validado().is_ok());
+        assert!(com(4, 5).validado().is_err());
+        assert!(com(121, 5).validado().is_err());
+        assert!(com(25, 0).validado().is_err());
+        assert!(com(25, 61).validado().is_err());
     }
 
     #[test]

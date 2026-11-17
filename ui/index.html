@@ -27,7 +27,15 @@
         <input id="campo-tarefa" type="text" autocomplete="off" list="sugestoes"
                placeholder="ex.: revisar o relatório">
         <button class="botao comecar" type="submit">🐣 Começar</button>
+        <button class="link botao-retomar" id="botao-retomar" type="button" hidden></button>
       </form>
+
+      <div id="pausa" class="rodando pausa" hidden>
+        <span class="etiqueta">☕ Pausa do Pomodoro</span>
+        <h2 id="pausa-tarefa"></h2>
+        <p class="relogio" id="pausa-relogio">05:00</p>
+        <button class="botao comecar" id="botao-voltar-pausa" type="button">▶ Voltar agora</button>
+      </div>
 
       <div id="rodando" class="rodando" hidden>
         <span class="etiqueta" id="rodando-etiqueta">Fazendo agora</span>
@@ -35,6 +43,7 @@
         <button class="desde" id="rodando-desde" type="button" title="Ajustar o horário de início"></button>
         <div class="editar-inicio" id="editar-inicio" hidden></div>
         <p class="relogio" id="relogio">00:00:00</p>
+        <p class="pomodoro-linha" id="pomodoro-linha" hidden></p>
         <button class="botao terminar" id="botao-terminar" type="button">🏁 Terminar</button>
         <button class="link botao-fixar" id="botao-fixar" type="button">📌 fixar</button>
       </div>
@@ -147,6 +156,20 @@
         <span class="numero"><input type="number" id="cfg-ausente" min="0" max="240" required> min</span>
       </label>
       <p class="dica">Coloque 0 pra desligar.</p>
+
+      <label class="linha-config">
+        <span>Modo Pomodoro 🍅</span>
+        <input type="checkbox" id="cfg-pomodoro" class="interruptor">
+      </label>
+      <label class="linha-config">
+        <span>Foco</span>
+        <span class="numero"><input type="number" id="cfg-foco" min="5" max="120" required> min</span>
+      </label>
+      <label class="linha-config">
+        <span>Pausa</span>
+        <span class="numero"><input type="number" id="cfg-pausa" min="1" max="60" required> min</span>
+      </label>
+      <p class="dica">No fim do foco a tarefa termina sozinha e começa a pausa (que não conta como trabalho).</p>
 
       <div class="linha-config">
         <span>Seus dados e backups</span>

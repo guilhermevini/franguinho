@@ -94,6 +94,14 @@ pra abrir a pasta dos dados. Fica salvo em `config.json`, na pasta de dados.
 > "Iniciar com o sistema" registra o executável que está rodando. Ative pelo app instalado
 > (`cargo tauri build`), não pelo `cargo tauri dev`, senão o sistema vai abrir a versão de desenvolvimento.
 
+## Pomodoro 🍅
+
+Opcional, nas configurações (foco de 25 min e pausa de 5 min por padrão). Com uma tarefa rodando,
+aparece quanto falta pra pausa. No fim do foco a tarefa termina sozinha — a pausa não conta como
+trabalho —, chega uma notificação e começa a contagem da pausa; no fim dela, outra notificação e um
+botão pra voltar pra mesma tarefa. Os pomodoros do dia aparecem no ninho. O relógio roda no Rust,
+então funciona com a janela escondida.
+
 ## Ovos e conquistas
 
 Cada tarefa terminada vira um 🥚 no ninho do dia, e dias seguidos de uso acendem uma 🔥 sequência.

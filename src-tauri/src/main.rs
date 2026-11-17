@@ -3,12 +3,14 @@
 mod atualizacao;
 mod config;
 mod estado;
+mod pomodoro;
 mod sistema;
 mod store;
 
 use chrono::{DateTime, Local};
 use config::Config;
 use estado::Estado;
+use pomodoro::Pomodoro;
 use serde::Serialize;
 use std::sync::{Mutex, MutexGuard};
 use store::Store;
@@ -21,6 +23,7 @@ pub struct Franguinho {
     store: Store,
     estado: Mutex<Estado>,
     config: Mutex<Config>,
+    pomodoro: Mutex<Pomodoro>,
 }
 
 /// O que a tela de configurações mostra: o config.json e o que mora no sistema.
@@ -67,7 +70,36 @@ impl Franguinho {
         };
         sistema::atualizar(app, &novo);
         let _ = app.emit("estado", &novo);
+        self.sincronizar_pomodoro(app, &novo);
         Ok(novo)
+    }
+
+    fn trava_pomodoro(&self) -> MutexGuard<'_, Pomodoro> {
+        self.pomodoro.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Acompanha a tarefa rodando (abre ou encerra o bloco de foco) e avisa a janela.
+    fn sincronizar_pomodoro(&self, app: &AppHandle, estado: &Estado) {
+        let rodando = estado.em_andamento().map(|r| r.tarefa.as_str());
+        self.trava_pomodoro()
+            .sincronizar(rodando, &self.config(), Local::now());
+        self.emitir_pomodoro(app);
+    }
+
+    pub fn tick_pomodoro(&self) -> Option<pomodoro::Virada> {
+        let estado = self.ler();
+        let rodando = estado.em_andamento().map(|r| r.tarefa.as_str());
+        self.trava_pomodoro()
+            .tick(rodando, &self.config(), Local::now())
+    }
+
+    fn vista_pomodoro(&self) -> pomodoro::Vista {
+        self.trava_pomodoro()
+            .vista(&self.config(), Local::now().date_naive())
+    }
+
+    pub fn emitir_pomodoro(&self, app: &AppHandle) {
+        let _ = app.emit("pomodoro", self.vista_pomodoro());
     }
 
     pub fn comecar(&self, app: &AppHandle, tarefa: Option<String>) -> Resultado {
@@ -82,8 +114,12 @@ impl Franguinho {
     }
 
     pub fn terminar(&self, app: &AppHandle) -> Resultado {
+        self.terminar_em(app, Local::now())
+    }
+
+    pub fn terminar_em(&self, app: &AppHandle, quando: estado::Hora) -> Resultado {
         self.alterar(app, |e| {
-            e.terminar(Local::now());
+            e.terminar(quando);
             Ok(())
         })
     }
@@ -206,9 +242,15 @@ fn salvar_preferencias(
         .salvar_config(&novo)
         .map_err(|e| format!("Ih, não consegui salvar as configurações: {e}"))?;
     *f.config.lock().unwrap_or_else(|e| e.into_inner()) = novo;
+    f.sincronizar_pomodoro(&app, &f.ler());
     let prefs = preferencias_de(&app, &f);
     let _ = app.emit("preferencias", &prefs);
     Ok(prefs)
+}
+
+#[tauri::command]
+fn pomodoro(f: State<Franguinho>) -> pomodoro::Vista {
+    f.vista_pomodoro()
 }
 
 #[tauri::command]
@@ -279,6 +321,7 @@ fn main() {
             store,
             estado: Mutex::new(estado),
             config: Mutex::new(config),
+            pomodoro: Mutex::new(Pomodoro::novo(Local::now().date_naive())),
         })
         .setup(move |app| {
             let app = app.handle();
@@ -288,6 +331,7 @@ fn main() {
                 eprintln!("não consegui registrar o atalho {atalho}: {e}");
             }
             sistema::vigiar(app.clone());
+            sistema::vigiar_pomodoro(app.clone());
             atualizacao::vigiar(app.clone());
             Ok(())
         })
@@ -315,6 +359,7 @@ fn main() {
             suspender_atalho,
             abrir_pasta_dados,
             copiar,
+            pomodoro,
             versao,
             procurar_atualizacao,
             instalar_atualizacao,

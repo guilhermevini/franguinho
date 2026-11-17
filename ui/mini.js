@@ -12,6 +12,9 @@ const $ = (id) => document.getElementById(id);
 let estado = { registros: [], fixadas: [] };
 let comemorandoAte = 0;
 let esquecidoMs = 3 * 3600 * 1000; // atualizado pelas configurações
+let pomodoro = { fase: "parado", fim: null, retomar: null };
+const naPausa = () => !emAndamento() && pomodoro.fase === "pausa";
+const faltaDaPausa = () => relogio(Math.max(0, new Date(pomodoro.fim) - Date.now())).slice(3);
 
 $("mascote").innerHTML = svgMascote;
 
@@ -37,11 +40,11 @@ function render() {
   try { acessorio = localStorage.getItem("franguinho.acessorio") ?? ""; } catch { /* sem armazenamento */ }
   m.dataset.acessorio = acessorioVisivel(estado.registros, acessorio);
 
-  document.body.classList.toggle("ocioso", !r);
   document.body.classList.toggle("alerta", !!r && esquecidoMs > 0 && duracao(r) >= esquecidoMs);
-  $("tarefa").textContent = r ? r.tarefa : "Zzz...";
+  $("tarefa").textContent = r ? r.tarefa : naPausa() ? `☕ pausa · ${pomodoro.retomar}` : "Zzz...";
   $("tarefa").title = r ? r.tarefa : "";
-  $("relogio").textContent = r ? relogio(duracao(r)) : "clique pra começar";
+  $("relogio").textContent = r ? relogio(duracao(r)) : naPausa() ? faltaDaPausa() : "clique pra começar";
+  document.body.classList.toggle("ocioso", !r && !naPausa());
   $("acao").textContent = r ? "■" : "▶";
   $("acao").title = r ? "Terminar" : "Começar uma tarefa";
   $("acao").classList.toggle("terminar", !!r);
@@ -56,7 +59,11 @@ async function chamar(comando) {
   }
 }
 
-$("acao").addEventListener("click", () => chamar(emAndamento() ? "terminar" : "abrir_janela"));
+$("acao").addEventListener("click", () => {
+  if (emAndamento()) chamar("terminar");
+  else if (pomodoro.retomar) invoke("comecar", { tarefa: pomodoro.retomar }).then(aplicar).catch(() => {});
+  else chamar("abrir_janela");
+});
 $("mascote").addEventListener("click", () => chamar("abrir_janela"));
 $("fechar").addEventListener("click", () => chamar("alternar_mini"));
 
@@ -67,6 +74,12 @@ if (tauri) {
     render();
   };
   invoke("preferencias").then(usarPreferencias).catch(() => {});
+  const usarPomodoro = (p) => {
+    pomodoro = p;
+    render();
+  };
+  invoke("pomodoro").then(usarPomodoro).catch(() => {});
+  tauri.event.listen("pomodoro", (e) => usarPomodoro(e.payload));
   tauri.event.listen("preferencias", (e) => usarPreferencias(e.payload));
   // Trocar o acessório na janela principal também troca aqui.
   window.addEventListener("storage", render);
@@ -76,5 +89,6 @@ chamar("carregar");
 setInterval(() => {
   const r = emAndamento();
   if (r) $("relogio").textContent = relogio(duracao(r));
+  else if (naPausa()) $("relogio").textContent = faltaDaPausa();
 }, 1000);
 setInterval(render, 30000);

@@ -29,6 +29,7 @@ let conquistasFeitas = null; // ids já desbloqueados, pra comemorar só as nova
 let acessorio = lerPreferencia("acessorio");
 let preferencias = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10 };
 const MAC = /Mac/i.test(navigator.platform);
+let pomodoro = { ligado: false, fase: "parado", fim: null, retomar: null, feitos_hoje: 0 };
 
 const ACESSORIOS = { chapeu: "chapéu de festa", oculos: "óculos escuros", laco: "laço", coroa: "coroa" };
 
@@ -84,6 +85,15 @@ $("form-nova").addEventListener("submit", (e) => {
 });
 
 $("botao-terminar").addEventListener("click", () => chamar("terminar"));
+$("botao-retomar").addEventListener("click", () => comecar(pomodoro.retomar));
+$("botao-voltar-pausa").addEventListener("click", () => comecar(pomodoro.retomar));
+
+function aplicarPomodoro(p) {
+  pomodoro = p;
+  renderTarefa();
+  renderNinho();
+  atualizarFala();
+}
 
 $("botao-fixar").addEventListener("click", () => {
   const r = emAndamento();
@@ -150,6 +160,9 @@ $("botao-config").addEventListener("click", async () => {
   $("cfg-atalho").value = preferencias.atalho;
   $("cfg-esquecido").value = preferencias.esquecido_horas;
   $("cfg-ausente").value = preferencias.ausente_min;
+  $("cfg-pomodoro").checked = preferencias.pomodoro;
+  $("cfg-foco").value = preferencias.foco_min;
+  $("cfg-pausa").value = preferencias.pausa_min;
   $("cfg-caminho").textContent = preferencias.pasta_dados;
   invoke("versao").then((v) => ($("cfg-versao").textContent = `v${v}`)).catch(() => {});
   $("modal-config").hidden = false;
@@ -201,6 +214,9 @@ $("form-config").addEventListener("submit", async (e) => {
         atalho: campoAtalho.value,
         esquecido_horas: Number($("cfg-esquecido").value),
         ausente_min: Number($("cfg-ausente").value),
+        pomodoro: $("cfg-pomodoro").checked,
+        foco_min: Number($("cfg-foco").value),
+        pausa_min: Number($("cfg-pausa").value),
       },
       iniciarComSistema: $("cfg-autostart").checked,
     }));
@@ -252,6 +268,7 @@ $("cfg-procurar").addEventListener("click", async () => {
 if (tauri) {
   tauri.event.listen("atualizacao", (e) => mostrarNovidade(e.payload));
   tauri.event.listen("estado", (e) => aplicar(e.payload));
+  tauri.event.listen("pomodoro", (e) => aplicarPomodoro(e.payload));
   tauri.event.listen("preferencias", (e) => aplicarPreferencias(e.payload));
   tauri.event.listen("ausencia", (e) => mostrarAusencia(e.payload));
   tauri.event.listen("aviso", (e) => avisar(String(e.payload)));
@@ -295,8 +312,26 @@ function renderMascote() {
   atualizarFala();
 }
 
+/// Contagem regressiva do foco (na tarefa rodando) ou da pausa.
+function atualizarPomodoro() {
+  const falta = pomodoro.fim ? Math.max(0, new Date(pomodoro.fim) - Date.now()) : 0;
+  const mmss = relogio(falta).slice(3);
+  const linha = $("pomodoro-linha");
+  linha.hidden = !(emAndamento() && pomodoro.fase === "foco");
+  if (!linha.hidden) linha.textContent = `🍅 foco · ${mmss} até a pausa`;
+  if (pomodoro.fase === "pausa") $("pausa-relogio").textContent = mmss;
+}
+
 function atualizarFala() {
   if (ausencia) return; // o diálogo de ausência manda na fala
+  if (!emAndamento() && pomodoro.fase === "pausa") {
+    $("fala").textContent = "Hora de esticar as asas! ☕";
+    return;
+  }
+  if (!emAndamento() && pomodoro.retomar && Date.now() >= comemorandoAte) {
+    $("fala").textContent = "Pausa feita! Bora voltar? 🍅";
+    return;
+  }
   const h = humor();
   const t = temporada();
   let fala = t?.dormindo ?? "Zzz... me dá uma tarefa pra ciscar?";
@@ -314,8 +349,15 @@ function atualizarFala() {
 
 function renderTarefa() {
   const r = emAndamento();
-  $("form-nova").hidden = !!r;
+  const naPausa = !r && pomodoro.fase === "pausa";
+  $("form-nova").hidden = !!r || naPausa;
+  $("pausa").hidden = !naPausa;
   $("rodando").hidden = !r;
+  const retomar = !r && pomodoro.fase === "parado" && pomodoro.retomar;
+  $("botao-retomar").hidden = !retomar;
+  if (retomar) $("botao-retomar").textContent = `▶ Voltar pra ${pomodoro.retomar}`;
+  if (naPausa) $("pausa-tarefa").textContent = pomodoro.retomar ?? "";
+  atualizarPomodoro();
   if (!r) {
     editandoInicio = false;
     return;
@@ -657,6 +699,7 @@ function renderNinho() {
   caixa.replaceChildren();
   if (ovos) caixa.append(el("span", { title: "Tarefas terminadas hoje" }, `🥚 ${ovos} hoje`));
   if (atual >= 2) caixa.append(el("span", { title: "Dias seguidos com tarefas" }, `🔥 ${atual} dias seguidos`));
+  if (pomodoro.feitos_hoje) caixa.append(el("span", { title: "Pomodoros completos hoje" }, `🍅 ${pomodoro.feitos_hoje} hoje`));
   const t = temporada();
   if (t) caixa.append(el("span", { title: "O franguinho se veste pra ocasião" }, `${t.emoji} ${t.nome}`));
 }
@@ -743,6 +786,7 @@ function imitacaoDoBackend() {
   const limpo = (t) => (t ?? "").trim() || null;
   const copia = () => structuredClone(e);
   const prefs = { atalho: "Ctrl+Alt+F", esquecido_horas: 3, ausente_min: 10, iniciar_com_sistema: false,
+    pomodoro: false, foco_min: 25, pausa_min: 5,
     pasta_dados: "~/Library/Application Support/franguinho" };
   const novoId = () => Math.max(0, ...e.registros.map((r) => r.id)) + 1;
   const posicao = (id) => {
@@ -795,6 +839,7 @@ function imitacaoDoBackend() {
       return { ...prefs };
     },
     suspender_atalho: () => {},
+    pomodoro: () => ({ ligado: prefs.pomodoro, fase: "parado", fim: null, retomar: null, feitos_hoje: 0 }),
     versao: () => "0.1.0",
     procurar_atualizacao: () => ({ versao: "0.2.0", notas: null }),
     instalar_atualizacao: () => { throw "(modo navegador: nada pra instalar)"; },
@@ -810,9 +855,11 @@ function imitacaoDoBackend() {
 
 chamar("carregar");
 invoke("preferencias").then(aplicarPreferencias).catch(() => {});
+invoke("pomodoro").then(aplicarPomodoro).catch(() => {});
 setInterval(() => {
   const r = emAndamento();
   if (r) $("relogio").textContent = relogio(duracao(r));
+  atualizarPomodoro();
 }, 1000);
 setInterval(() => {
   atualizarFala();

@@ -1,7 +1,7 @@
 //! Integração com o sistema: ícone na bandeja/barra de menu, atalho global, o
 //! aviso de "esqueceu ligado?" e a detecção de ausência.
 
-use crate::{Franguinho, estado::Estado};
+use crate::{Franguinho, estado::Estado, pomodoro::Virada};
 use chrono::{DateTime, Local, TimeDelta};
 use serde::Serialize;
 use std::{thread, time::Duration};
@@ -324,6 +324,45 @@ pub fn vigiar(app: AppHandle) {
                     .body(format!("\"{}\" está rodando há {horas}h.", r.tarefa))
                     .show();
                 avisado = Some((r.inicio, horas));
+            }
+        }
+    });
+}
+
+/// O relógio do Pomodoro: confere a cada segundo se o foco ou a pausa acabaram.
+pub fn vigiar_pomodoro(app: AppHandle) {
+    thread::spawn(move || {
+        loop {
+            thread::sleep(Duration::from_secs(1));
+            let f = app.state::<Franguinho>();
+            let notificar = |titulo: &str, corpo: String| {
+                let _ = app
+                    .notification()
+                    .builder()
+                    .title(titulo)
+                    .body(corpo)
+                    .show();
+            };
+            match f.tick_pomodoro() {
+                Some(Virada::FocoAcabou { fim, tarefa }) => {
+                    // A tarefa termina no fim do bloco: a pausa não conta como trabalho.
+                    if let Err(e) = f.terminar_em(&app, fim) {
+                        let _ = app.emit("aviso", e);
+                    }
+                    let pausa = f.config().pausa_min;
+                    notificar(
+                        "🍅 Pomodoro feito!",
+                        format!("Pausa de {pausa} min. \"{tarefa}\" fica te esperando."),
+                    );
+                }
+                Some(Virada::PausaAcabou { tarefa }) => {
+                    f.emitir_pomodoro(&app);
+                    notificar(
+                        "☕ A pausa acabou",
+                        format!("Bora voltar pra \"{tarefa}\"?"),
+                    );
+                }
+                None => {}
             }
         }
     });

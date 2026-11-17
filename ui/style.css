@@ -668,3 +668,9 @@ kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px so
   -webkit-user-select: text;
   outline: none;
 }
+
+/* ---------- Pomodoro ---------- */
+
+.pomodoro-linha { font-weight: 800; color: var(--vermelho); margin: -6px 0 10px; font-variant-numeric: tabular-nums; }
+.pausa .relogio { color: var(--verde); }
+.botao-retomar { align-self: center; font-size: 14px; }
