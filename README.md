@@ -4,6 +4,29 @@ Um franguinho simpático que registra o início e o fim das suas tarefas — um 
 manual para desktop (Windows, Linux e macOS), feito com [Tauri 2](https://tauri.app):
 lógica e dados em Rust, interface em HTML/CSS/JS puro (sem npm, sem build).
 
+## Telas
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/telas/agora.png" width="200" alt="Aba Agora: franguinho, tarefa rodando, atalhos e resumo de hoje"><br><b>🐣 Agora</b></td>
+    <td align="center"><img src="docs/telas/historico.png" width="200" alt="Aba Histórico: tarefas por dia, com horários e duração"><br><b>📜 Histórico</b></td>
+    <td align="center"><img src="docs/telas/numeros.png" width="200" alt="Aba Números: resumo por tarefa e mapa de calor do ano"><br><b>📊 Números</b></td>
+    <td align="center"><img src="docs/telas/conquistas.png" width="200" alt="Aba Conquistas: cartões de conquistas e acessórios"><br><b>🏆 Conquistas</b></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/telas/escuro.png" width="200" alt="Modo escuro da aba Agora"><br><b>🌙 Modo escuro</b></td>
+    <td align="center" valign="middle"><img src="docs/telas/mini.png" width="400" alt="Mini janela flutuante com o franguinho, a tarefa e o cronômetro"><br><b>🪟 Mini janela</b>, sempre por cima</td>
+  </tr>
+</table>
+
+<p align="center"><img src="docs/telas/figurinos.png" width="640" alt="O franguinho com os acessórios de conquistas e de temporada"><br>
+<b>Os figurinos do franguinho:</b> liberados por conquistas e automáticos nas datas especiais</p>
+
+<sub>Telas geradas com dados fictícios.</sub>
+
 ## Estrutura
 
 ```
@@ -11,6 +34,7 @@ ui/                 interface (index.html, mini.html, app.js, mini.js, logica.js
 tests/              testes da interface (node --test)
 src-tauri/          app Rust: regras (estado.rs), comandos, armazenamento, bandeja, ícones
 assets/icone.svg    fonte do ícone (gere os PNG/ICNS/ICO com `cargo tauri icon`)
+docs/telas/         as imagens deste README
 ```
 
 ## Rodando
