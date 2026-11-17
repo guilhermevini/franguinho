@@ -134,7 +134,8 @@ $("mascote").addEventListener("click", () => {
   m.classList.remove("cutucado");
   void m.offsetWidth; // reinicia a animação
   m.classList.add("cutucado");
-  $("fala").textContent = "Có!";
+  if (preferencias.sons) tocar("cutucar", 0.88 + Math.random() * 0.3);
+  $("fala").textContent = "Piu!";
   setTimeout(atualizarFala, 1200);
 });
 

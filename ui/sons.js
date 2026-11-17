@@ -52,16 +52,22 @@ const SONS = {
     { freq: 660, dur: 0.16, onda: "sine" },
     { freq: 990, inicio: 0.16, dur: 0.3, onda: "sine" },
   ],
+  // Cutucar o franguinho: um "piu!" agudinho.
+  cutucar: [
+    { freq: 1300, ate: 1900, dur: 0.06, onda: "sine", volume: 0.16 },
+    { freq: 1900, ate: 1450, inicio: 0.06, dur: 0.07, onda: "sine", volume: 0.16 },
+  ],
   // Conquista: arpejo de dó maior.
   conquista: [523, 659, 784, 1047].map((freq, i) => ({ freq, inicio: i * 0.09, dur: i === 3 ? 0.45 : 0.14 })),
 };
 
-export function tocar(nome) {
+/// `tom` multiplica as frequências (1 = normal), pra variar um som repetido.
+export function tocar(nome, tom = 1) {
   const notas = SONS[nome];
   if (!notas) return;
   try {
     const ctx = audio();
-    for (const n of notas) nota(ctx, n);
+    for (const n of notas) nota(ctx, { ...n, freq: n.freq * tom, ate: n.ate && n.ate * tom });
   } catch {
     // Sem áudio (ou bloqueado): o franguinho fica quieto.
   }

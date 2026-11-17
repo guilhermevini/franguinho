@@ -104,7 +104,7 @@ então funciona com a janela escondida.
 
 ## Sons 🔊
 
-Um "có!" ao começar, um cacarejo ao terminar, um sininho na pausa do Pomodoro, duas notas no fim
+Um "có!" ao começar, um "piu!" quando você cutuca o franguinho, um cacarejo ao terminar, um sininho na pausa do Pomodoro, duas notas no fim
 dela e um arpejo nas conquistas. São sintetizados na hora (Web Audio API), sem arquivos de áudio.
 Dá pra testar e desligar nas configurações.
 
