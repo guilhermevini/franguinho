@@ -66,3 +66,7 @@ Clicar noutro projeto troca de tarefa; passe o mouse e clique no **×** para rem
 | Linux | `~/.local/share/franguinho` |
 
 O botão **📄 Exportar CSV** gera `registros.csv` na mesma pasta.
+
+## Licença
+
+[MIT](LICENSE). A fonte Nunito (`ui/fonts`) é distribuída sob a SIL Open Font License 1.1.
