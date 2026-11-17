@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Só pra rodar os testes da interface: `npm test` (sem dependências).",
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}

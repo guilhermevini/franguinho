@@ -1,7 +1,7 @@
 //! Integração com o sistema: ícone na bandeja/barra de menu, atalho global, o
 //! aviso de "esqueceu ligado?" e a detecção de ausência.
 
-use crate::{Estado, Franguinho};
+use crate::{Franguinho, estado::Estado};
 use chrono::{DateTime, Local, TimeDelta};
 use serde::Serialize;
 use std::{thread, time::Duration};
@@ -267,5 +267,19 @@ fn curto(d: TimeDelta) -> String {
         (0, m) => format!("{m}min"),
         (h, 0) => format!("{h}h"),
         (h, m) => format!("{h}h{m:02}"),
+    }
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    #[test]
+    fn curto_formata_pra_barra_de_menu() {
+        assert_eq!(curto(TimeDelta::seconds(40)), "0min");
+        assert_eq!(curto(TimeDelta::minutes(7)), "7min");
+        assert_eq!(curto(TimeDelta::minutes(60)), "1h");
+        assert_eq!(curto(TimeDelta::minutes(65)), "1h05");
+        assert_eq!(curto(TimeDelta::minutes(-3)), "0min");
     }
 }

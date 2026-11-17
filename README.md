@@ -7,8 +7,9 @@ lógica e dados em Rust, interface em HTML/CSS/JS puro (sem npm, sem build).
 ## Estrutura
 
 ```
-ui/                 interface (index.html, style.css, app.js, fonte Nunito)
-src-tauri/          app Rust: comandos, armazenamento, config do Tauri e ícones
+ui/                 interface (index.html, style.css, app.js, logica.js, fonte Nunito)
+tests/              testes da interface (node --test)
+src-tauri/          app Rust: regras (estado.rs), comandos, armazenamento, bandeja, ícones
 assets/icone.svg    fonte do ícone (gere os PNG/ICNS/ICO com `cargo tauri icon`)
 ```
 
@@ -28,6 +29,15 @@ No Linux, instale antes as dependências do WebKitGTK
 ```sh
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxss-dev
 ```
+
+### Testes
+
+```sh
+cd src-tauri && cargo test   # regras (começar, terminar, editar, ausência…) e armazenamento
+npm test                     # contas da interface (resumo, sequência, conquistas) — sem dependências
+```
+
+O GitHub Actions roda `cargo fmt`, `clippy` e os dois conjuntos de testes a cada push.
 
 ### Mexendo só no visual
 

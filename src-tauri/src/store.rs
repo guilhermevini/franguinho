@@ -36,6 +36,12 @@ impl Store {
         Self { pasta }
     }
 
+    /// Uma pasta qualquer, pros testes não mexerem nos dados de verdade.
+    #[cfg(test)]
+    fn em(pasta: PathBuf) -> Self {
+        Self { pasta }
+    }
+
     pub fn carregar(&self) -> Vec<Registro> {
         self.ler("registros.json")
     }
@@ -99,5 +105,113 @@ impl Store {
         }
         fs::write(&destino, csv)?;
         Ok(destino)
+    }
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+    use chrono::TimeZone;
+
+    /// Pasta temporária própria de cada teste, apagada no fim.
+    struct Pasta(PathBuf);
+
+    impl Pasta {
+        fn nova(nome: &str) -> Self {
+            let p = std::env::temp_dir()
+                .join(format!("franguinho-teste-{nome}-{}", std::process::id()));
+            let _ = fs::remove_dir_all(&p);
+            Self(p)
+        }
+    }
+
+    impl Drop for Pasta {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn registro(id: u64, tarefa: &str, projeto: Option<&str>) -> Registro {
+        let inicio = Local.with_ymd_and_hms(2026, 11, 17, 9, 0, 0).unwrap();
+        Registro {
+            id,
+            tarefa: tarefa.into(),
+            projeto: projeto.map(Into::into),
+            inicio,
+            fim: Some(inicio + TimeDelta::minutes(90)),
+        }
+    }
+
+    #[test]
+    fn sem_arquivo_comeca_vazio() {
+        let pasta = Pasta::nova("vazio");
+        let store = Store::em(pasta.0.clone());
+        assert!(store.carregar().is_empty());
+        assert!(store.carregar_projetos().is_empty());
+    }
+
+    #[test]
+    fn salva_e_carrega_de_volta() {
+        let pasta = Pasta::nova("ida-e-volta");
+        let store = Store::em(pasta.0.clone());
+        store
+            .salvar(&[registro(1, "a", Some("Trabalho")), registro(2, "b", None)])
+            .unwrap();
+        store.salvar_projetos(&["Trabalho".into()]).unwrap();
+
+        let lidos = store.carregar();
+        assert_eq!(lidos.len(), 2);
+        assert_eq!(
+            (lidos[0].id, lidos[0].projeto.as_deref()),
+            (1, Some("Trabalho"))
+        );
+        assert_eq!(lidos[1].duracao(), TimeDelta::minutes(90));
+        assert_eq!(store.carregar_projetos(), vec!["Trabalho"]);
+        assert!(!pasta.0.join("registros.json.tmp").exists());
+    }
+
+    #[test]
+    fn le_o_formato_antigo_sem_id_nem_projeto() {
+        let pasta = Pasta::nova("antigo");
+        fs::create_dir_all(&pasta.0).unwrap();
+        fs::write(
+            pasta.0.join("registros.json"),
+            r#"[{"tarefa":"x","inicio":"2026-11-16T09:00:00-03:00","fim":null}]"#,
+        )
+        .unwrap();
+        let lidos = Store::em(pasta.0.clone()).carregar();
+        assert_eq!((lidos[0].id, lidos[0].projeto.clone()), (0, None));
+    }
+
+    #[test]
+    fn arquivo_corrompido_vira_backup_em_vez_de_sumir() {
+        let pasta = Pasta::nova("corrompido");
+        fs::create_dir_all(&pasta.0).unwrap();
+        fs::write(pasta.0.join("registros.json"), "isso não é json").unwrap();
+        assert!(Store::em(pasta.0.clone()).carregar().is_empty());
+        let backups: Vec<_> = fs::read_dir(&pasta.0)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains("corrompido"))
+            .collect();
+        assert_eq!(backups.len(), 1);
+        assert_eq!(
+            fs::read_to_string(backups[0].path()).unwrap(),
+            "isso não é json"
+        );
+    }
+
+    #[test]
+    fn csv_escapa_aspas_e_virgulas() {
+        let pasta = Pasta::nova("csv");
+        let store = Store::em(pasta.0.clone());
+        let caminho = store
+            .exportar_csv(&[registro(1, "revisar \"PR\", urgente", Some("Trabalho"))])
+            .unwrap();
+        let csv = fs::read_to_string(caminho).unwrap();
+        let linhas: Vec<&str> = csv.lines().collect();
+        assert_eq!(linhas[0], "projeto,tarefa,inicio,fim,duracao_minutos");
+        assert!(linhas[1].starts_with("\"Trabalho\",\"revisar \"\"PR\"\", urgente\","));
+        assert!(linhas[1].ends_with(",90"));
     }
 }

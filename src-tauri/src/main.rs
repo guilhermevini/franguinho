@@ -1,61 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // sem console no Windows
 
+mod estado;
 mod sistema;
 mod store;
 
-use chrono::{DateTime, Local, TimeDelta};
-use serde::Serialize;
+use chrono::{DateTime, Local};
+use estado::Estado;
 use std::sync::{Mutex, MutexGuard};
-use store::{Registro, Store};
+use store::Store;
 use tauri::{AppHandle, Emitter, State};
-
-/// Tudo o que a interface precisa pra se desenhar. Toda mudança devolve (e emite
-/// no evento "estado") o estado completo, então o frontend só re-renderiza.
-#[derive(Clone, Serialize)]
-pub struct Estado {
-    registros: Vec<Registro>,
-    projetos: Vec<String>,
-}
-
-impl Estado {
-    /// Monta o estado carregado do disco, dando id aos registros que não têm
-    /// (ou que repetem um id). Devolve também se algo precisou ser corrigido.
-    fn novo(mut registros: Vec<Registro>, projetos: Vec<String>) -> (Self, bool) {
-        let mut vistos = std::collections::HashSet::new();
-        let mut proximo = registros.iter().map(|r| r.id).max().unwrap_or(0) + 1;
-        let mut corrigiu = false;
-        for r in &mut registros {
-            if r.id == 0 || !vistos.insert(r.id) {
-                r.id = proximo;
-                vistos.insert(proximo);
-                proximo += 1;
-                corrigiu = true;
-            }
-        }
-        (
-            Self {
-                registros,
-                projetos,
-            },
-            corrigiu,
-        )
-    }
-
-    pub fn em_andamento(&self) -> Option<&Registro> {
-        self.registros.iter().find(|r| r.fim.is_none())
-    }
-
-    fn proximo_id(&self) -> u64 {
-        self.registros.iter().map(|r| r.id).max().unwrap_or(0) + 1
-    }
-
-    fn posicao(&self, id: u64) -> Result<usize, String> {
-        self.registros
-            .iter()
-            .position(|r| r.id == id)
-            .ok_or_else(|| "Esse registro não existe mais.".to_owned())
-    }
-}
 
 pub struct Franguinho {
     store: Store,
@@ -93,82 +46,21 @@ impl Franguinho {
         Ok(novo)
     }
 
-    /// Começa uma tarefa. Num projeto sem descrição, a tarefa leva o nome do projeto.
-    /// Só uma tarefa roda por vez: a anterior termina automaticamente.
     pub fn comecar(
         &self,
         app: &AppHandle,
         tarefa: Option<String>,
         projeto: Option<String>,
     ) -> Resultado {
-        let projeto = limpo(projeto);
-        let tarefa = limpo(tarefa)
-            .or_else(|| projeto.clone())
-            .ok_or("Me conta o que você vai fazer!")?;
-        self.alterar(app, |e| {
-            if let Some(atual) = e.registros.iter_mut().find(|r| r.fim.is_none()) {
-                if atual.tarefa == tarefa && atual.projeto == projeto {
-                    return Ok(()); // já está rodando exatamente isso
-                }
-                atual.fim = Some(Local::now());
-            }
-            let id = e.proximo_id();
-            e.registros.push(Registro {
-                id,
-                tarefa,
-                projeto,
-                inicio: Local::now(),
-                fim: None,
-            });
-            Ok(())
-        })
-    }
-
-    /// Desconta uma ausência da tarefa `id`: ela termina quando você saiu e, se
-    /// `continuar`, recomeça agora com o mesmo nome e projeto.
-    pub fn descontar_ausencia(
-        &self,
-        app: &AppHandle,
-        id: u64,
-        desde: DateTime<Local>,
-        continuar: bool,
-    ) -> Resultado {
-        self.alterar(app, |e| {
-            let i = e.posicao(id)?;
-            let atual = e.registros[i].clone();
-            if atual.fim.is_some() {
-                return Err("Essa tarefa já tinha terminado.".into());
-            }
-            if desde <= atual.inicio {
-                e.registros.remove(i); // saiu logo que começou: não sobra nada
-            } else {
-                e.registros[i].fim = Some(desde.min(Local::now()));
-            }
-            if continuar {
-                let id = e.proximo_id();
-                e.registros.push(Registro {
-                    id,
-                    inicio: Local::now(),
-                    fim: None,
-                    ..atual
-                });
-            }
-            Ok(())
-        })
+        self.alterar(app, |e| e.comecar(tarefa, projeto, Local::now()))
     }
 
     pub fn terminar(&self, app: &AppHandle) -> Resultado {
         self.alterar(app, |e| {
-            if let Some(atual) = e.registros.iter_mut().find(|r| r.fim.is_none()) {
-                atual.fim = Some(Local::now());
-            }
+            e.terminar(Local::now());
             Ok(())
         })
     }
-}
-
-fn limpo(texto: Option<String>) -> Option<String> {
-    texto.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty())
 }
 
 #[tauri::command]
@@ -199,11 +91,11 @@ fn descontar_ausencia(
     desde: DateTime<Local>,
     continuar: bool,
 ) -> Resultado {
-    f.descontar_ausencia(&app, id, desde, continuar)
+    f.alterar(&app, |e| {
+        e.descontar_ausencia(id, desde, continuar, Local::now())
+    })
 }
 
-/// Corrige um registro (nome, projeto e horários), pra quando você esquece de
-/// apertar começar ou terminar na hora certa.
 #[tauri::command]
 fn editar_registro(
     app: AppHandle,
@@ -214,64 +106,25 @@ fn editar_registro(
     inicio: DateTime<Local>,
     fim: Option<DateTime<Local>>,
 ) -> Resultado {
-    let projeto = limpo(projeto);
-    let tarefa = limpo(Some(tarefa))
-        .or_else(|| projeto.clone())
-        .ok_or("A tarefa precisa de um nome.")?;
-    let limite = Local::now() + TimeDelta::minutes(1);
-    if inicio > limite {
-        return Err("O início não pode ser no futuro.".into());
-    }
-    if let Some(fim) = fim {
-        if fim <= inicio {
-            return Err("O fim precisa ser depois do início.".into());
-        }
-        if fim > limite {
-            return Err("O fim não pode ser no futuro.".into());
-        }
-    }
     f.alterar(&app, |e| {
-        let i = e.posicao(id)?;
-        let r = &mut e.registros[i];
-        if r.fim.is_none() != fim.is_none() {
-            return Err("Não dá pra mudar se a tarefa está rodando ou não.".into());
-        }
-        *r = Registro {
-            id,
-            tarefa,
-            projeto,
-            inicio,
-            fim,
-        };
-        e.registros.sort_by_key(|r| r.inicio);
-        Ok(())
+        e.editar(id, tarefa, projeto, inicio, fim, Local::now())
     })
 }
 
 #[tauri::command]
 fn apagar_registro(app: AppHandle, f: State<Franguinho>, id: u64) -> Resultado {
-    f.alterar(&app, |e| {
-        let i = e.posicao(id)?;
-        e.registros.remove(i);
-        Ok(())
-    })
+    f.alterar(&app, |e| e.apagar(id))
 }
 
 #[tauri::command]
 fn adicionar_projeto(app: AppHandle, f: State<Franguinho>, nome: String) -> Resultado {
-    let nome = limpo(Some(nome)).ok_or("O projeto precisa de um nome.")?;
-    f.alterar(&app, |e| {
-        if !e.projetos.contains(&nome) {
-            e.projetos.push(nome);
-        }
-        Ok(())
-    })
+    f.alterar(&app, |e| e.adicionar_projeto(nome))
 }
 
 #[tauri::command]
 fn remover_projeto(app: AppHandle, f: State<Franguinho>, nome: String) -> Resultado {
     f.alterar(&app, |e| {
-        e.projetos.retain(|p| *p != nome);
+        e.remover_projeto(&nome);
         Ok(())
     })
 }
