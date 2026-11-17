@@ -37,6 +37,21 @@ const ACESSORIOS = { chapeu: "chapéu de festa", oculos: "óculos escuros", laco
 
 const $ = (id) => document.getElementById(id);
 
+// ---------- Abas ----------
+
+/// Mostra uma aba (agora, historico, numeros, conquistas). O app abre em "agora".
+function mostrarAba(nome) {
+  for (const aba of document.querySelectorAll(".aba")) aba.hidden = aba.dataset.aba !== nome;
+  for (const b of $("barra-abas").children) b.classList.toggle("ativa", b.dataset.aba === nome);
+  if (nome === "conquistas") $("conquista-nova").hidden = true;
+  window.scrollTo(0, 0);
+}
+
+$("barra-abas").addEventListener("click", (e) => {
+  const botao = e.target.closest("[data-aba]");
+  if (botao) mostrarAba(botao.dataset.aba);
+});
+
 $("mascote").innerHTML = svgMascote;
 
 // ---------- Estado e ações ----------
@@ -76,6 +91,8 @@ function anunciarConquistasNovas() {
   conquistasFeitas = new Set(feitas.map((c) => c.id));
   if (!novas.length) return;
   const c = novas[0];
+  // Bolinha na aba 🏆 até você abrir, se ela não estiver aberta agora.
+  if (document.querySelector('.aba[data-aba="conquistas"]').hidden) $("conquista-nova").hidden = false;
   avisar(`🏆 Conquista: ${c.nome}!` + (c.acessorio ? ` 🎁 Liberou: ${ACESSORIOS[c.acessorio]}.` : ""));
   comemorandoAte = Date.now() + 3000;
   setTimeout(renderMascote, 3000);
@@ -143,6 +160,8 @@ $("botao-mini").addEventListener("click", () => {
   if (tauri) invoke("alternar_mini").catch((e) => avisar(String(e)));
   else window.open("mini.html", "mini", "width=280,height=96"); // no navegador, só uma prévia
 });
+
+$("ver-numeros").addEventListener("click", () => mostrarAba("numeros"));
 
 $("rodando-desde").addEventListener("click", () => {
   editandoInicio = true;
@@ -300,7 +319,10 @@ if (tauri) {
   tauri.event.listen("preferencias", (e) => aplicarPreferencias(e.payload));
   tauri.event.listen("ausencia", (e) => mostrarAusencia(e.payload));
   tauri.event.listen("aviso", (e) => avisar(String(e.payload)));
-  tauri.event.listen("focar-campo", () => $("campo-tarefa").focus());
+  tauri.event.listen("focar-campo", () => {
+    mostrarAba("agora");
+    $("campo-tarefa").focus();
+  });
 }
 
 // ---------- Desenho ----------
@@ -473,17 +495,20 @@ function renderResumo() {
   for (const aba of $("abas-resumo").children) {
     aba.classList.toggle("ativa", aba.dataset.periodo === periodo);
   }
+  desenharResumo($("resumo"), resumo(estado.registros, periodo),
+    periodo === "hoje" ? "Nada ciscado hoje ainda." : "Nada ciscado nesta semana ainda.");
+  // Na aba Agora, só o de hoje e só as maiores.
+  desenharResumo($("resumo-hoje"), resumo(estado.registros, "hoje", new Date(), 4),
+    "Nada ciscado hoje ainda. Bora começar? 🐣");
+}
 
-  const { linhas, total } = resumo(estado.registros, periodo);
-
-  const caixa = $("resumo");
+/// Total e uma barra por tarefa, proporcional à maior.
+function desenharResumo(caixa, { linhas, total }, vazio) {
   caixa.replaceChildren();
   if (!linhas.length) {
-    caixa.append(el("p", { className: "vazio" },
-      periodo === "hoje" ? "Nada ciscado hoje ainda." : "Nada ciscado nesta semana ainda."));
+    caixa.append(el("p", { className: "vazio" }, vazio));
     return;
   }
-
   const maior = linhas[0][1] || 1;
   caixa.append(el("div", { className: "resumo-total" },
     el("span", {}, "Total"), el("strong", {}, curto(total))));

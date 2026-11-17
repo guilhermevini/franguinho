@@ -62,6 +62,12 @@ O GitHub Actions roda `cargo fmt`, `clippy` e os dois conjuntos de testes a cada
 Abra a pasta `ui/` num servidor qualquer (ex.: `python3 -m http.server -d ui`) e use o navegador.
 Fora do Tauri, o `app.js` usa um backend de mentira em memória com os mesmos comandos.
 
+## Abas
+
+Uma barra embaixo separa o app em quatro abas: **🐣 Agora** (franguinho, tarefa, atalhos e o resumo de
+hoje), **📜 Histórico** (registros, edição e CSV), **📊 Números** (resumo de hoje/semana, mapa do ano e
+relatório) e **🏆 Conquistas** — que ganha uma bolinha quando sai conquista nova.
+
 ## Tarefas e atalhos
 
 Tudo é tarefa: digite um nome novo pra criar ou escolha uma já usada (o campo sugere enquanto você

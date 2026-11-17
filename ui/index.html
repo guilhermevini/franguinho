@@ -13,95 +13,119 @@
       <button class="pequeno primario" id="botao-atualizar" type="button">Atualizar</button>
     </div>
 
-    <section class="palco">
-      <button class="mascote dormindo" id="mascote" type="button" aria-label="Franguinho"></button>
-      <button class="link botao-config" id="botao-config" type="button" title="Configurações">⚙️</button>
-      <button class="link botao-mini" id="botao-mini" type="button" title="Mini janela sempre por cima">🪟 mini</button>
-      <p class="balao" id="fala">Zzz... me dá uma tarefa pra ciscar?</p>
-      <div class="ninho-hoje" id="ninho-hoje"></div>
-    </section>
+    <div class="aba" data-aba="agora">
+      <section class="palco">
+        <button class="mascote dormindo" id="mascote" type="button" aria-label="Franguinho"></button>
+        <button class="link botao-config" id="botao-config" type="button" title="Configurações">⚙️</button>
+        <button class="link botao-mini" id="botao-mini" type="button" title="Mini janela sempre por cima">🪟 mini</button>
+        <p class="balao" id="fala">Zzz... me dá uma tarefa pra ciscar?</p>
+        <div class="ninho-hoje" id="ninho-hoje"></div>
+      </section>
 
-    <section class="cartao" id="cartao-tarefa">
-      <form id="form-nova" class="nova">
-        <label for="campo-tarefa">O que vamos fazer?</label>
-        <input id="campo-tarefa" type="text" autocomplete="off" list="sugestoes"
-               placeholder="ex.: revisar o relatório">
-        <button class="botao comecar" type="submit">🐣 Começar</button>
-        <button class="link botao-retomar" id="botao-retomar" type="button" hidden></button>
-      </form>
+      <section class="cartao" id="cartao-tarefa">
+        <form id="form-nova" class="nova">
+          <label for="campo-tarefa">O que vamos fazer?</label>
+          <input id="campo-tarefa" type="text" autocomplete="off" list="sugestoes"
+                 placeholder="ex.: revisar o relatório">
+          <button class="botao comecar" type="submit">🐣 Começar</button>
+          <button class="link botao-retomar" id="botao-retomar" type="button" hidden></button>
+        </form>
 
-      <div id="pausa" class="rodando pausa" hidden>
-        <span class="etiqueta">☕ Pausa do Pomodoro</span>
-        <h2 id="pausa-tarefa"></h2>
-        <p class="relogio" id="pausa-relogio">05:00</p>
-        <button class="botao comecar" id="botao-voltar-pausa" type="button">▶ Voltar agora</button>
-      </div>
-
-      <div id="rodando" class="rodando" hidden>
-        <span class="etiqueta" id="rodando-etiqueta">Fazendo agora</span>
-        <h2 id="rodando-tarefa"></h2>
-        <button class="desde" id="rodando-desde" type="button" title="Ajustar o horário de início"></button>
-        <div class="editar-inicio" id="editar-inicio" hidden></div>
-        <p class="relogio" id="relogio">00:00:00</p>
-        <p class="pomodoro-linha" id="pomodoro-linha" hidden></p>
-        <button class="botao terminar" id="botao-terminar" type="button">🏁 Terminar</button>
-        <button class="link botao-fixar" id="botao-fixar" type="button">📌 fixar</button>
-      </div>
-    </section>
-
-    <section class="bloco">
-      <h3>Atalhos</h3>
-      <div class="chips" id="atalhos"></div>
-      <p class="dica" id="atalhos-vazio">As tarefas que você usar aparecem aqui pra começar com um clique.</p>
-      <p class="dica">📌 fixa uma tarefa nos atalhos, com uma cor só dela.</p>
-    </section>
-
-    <section class="bloco">
-      <div class="titulo-linha">
-        <h3>Resumo</h3>
-        <button class="link botao-relatorio" id="botao-relatorio" type="button" title="Texto da semana pra copiar">📋 Relatório</button>
-        <div class="abas" id="abas-resumo">
-          <button type="button" data-periodo="hoje">Hoje</button>
-          <button type="button" data-periodo="semana">Semana</button>
+        <div id="pausa" class="rodando pausa" hidden>
+          <span class="etiqueta">☕ Pausa do Pomodoro</span>
+          <h2 id="pausa-tarefa"></h2>
+          <p class="relogio" id="pausa-relogio">05:00</p>
+          <button class="botao comecar" id="botao-voltar-pausa" type="button">▶ Voltar agora</button>
         </div>
-      </div>
-      <div class="cartao resumo" id="resumo"></div>
-    </section>
 
-    <section class="bloco">
-      <div class="titulo-linha">
-        <h3>Ano no ninho</h3>
-        <span class="contador" id="mapa-total"></span>
-      </div>
-      <div class="cartao mapa">
-        <svg id="mapa" role="img" aria-label="Mapa de calor do ano: horas registradas por dia"></svg>
-        <div class="mapa-rodape">
-          <span class="dica" id="mapa-legenda"></span>
-          <span class="legenda" aria-hidden="true">menos <i class="n0"></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><i class="n4"></i> mais</span>
+        <div id="rodando" class="rodando" hidden>
+          <span class="etiqueta" id="rodando-etiqueta">Fazendo agora</span>
+          <h2 id="rodando-tarefa"></h2>
+          <button class="desde" id="rodando-desde" type="button" title="Ajustar o horário de início"></button>
+          <div class="editar-inicio" id="editar-inicio" hidden></div>
+          <p class="relogio" id="relogio">00:00:00</p>
+          <p class="pomodoro-linha" id="pomodoro-linha" hidden></p>
+          <button class="botao terminar" id="botao-terminar" type="button">🏁 Terminar</button>
+          <button class="link botao-fixar" id="botao-fixar" type="button">📌 fixar</button>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="bloco">
-      <div class="titulo-linha">
-        <h3>Conquistas</h3>
-        <span class="contador" id="contador-conquistas"></span>
-      </div>
-      <div class="conquistas" id="conquistas"></div>
-      <p class="dica">As com 🎁 liberam acessórios: clique numa conquista feita para vestir o franguinho.</p>
-    </section>
 
-    <section class="bloco historico">
-      <div class="titulo-linha">
-        <h3>Ninho de tarefas</h3>
-        <button class="link" id="botao-csv" type="button" title="Exporta tudo para registros.csv">📄 Exportar CSV</button>
-      </div>
-      <p class="dica">Clique numa tarefa para corrigir o nome ou os horários.</p>
-      <div id="historico"></div>
-    </section>
+      <section class="bloco">
+        <h3>Atalhos</h3>
+        <div class="chips" id="atalhos"></div>
+        <p class="dica" id="atalhos-vazio">As tarefas que você usar aparecem aqui pra começar com um clique.</p>
+        <p class="dica">📌 fixa uma tarefa nos atalhos, com uma cor só dela.</p>
+      </section>
 
-    <p class="rodape">⌨️ <kbd id="atalho">Ctrl+Alt+F</kbd> termina a tarefa ou abre o Franguinho, de qualquer app.</p>
+      <section class="bloco">
+        <div class="titulo-linha">
+          <h3>Hoje</h3>
+          <button class="link" id="ver-numeros" type="button">📊 ver mais</button>
+        </div>
+        <div class="cartao resumo" id="resumo-hoje"></div>
+      </section>
+
+      <p class="rodape">⌨️ <kbd id="atalho">Ctrl+Alt+F</kbd> termina a tarefa ou abre o Franguinho, de qualquer app.</p>
+    </div>
+
+    <div class="aba" data-aba="historico" hidden>
+      <section class="bloco historico">
+        <div class="titulo-linha">
+          <h3>Ninho de tarefas</h3>
+          <button class="link" id="botao-csv" type="button" title="Exporta tudo para registros.csv">📄 Exportar CSV</button>
+        </div>
+        <p class="dica">Clique numa tarefa para corrigir o nome ou os horários.</p>
+        <div id="historico"></div>
+      </section>
+    </div>
+
+    <div class="aba" data-aba="numeros" hidden>
+      <section class="bloco">
+        <div class="titulo-linha">
+          <h3>Resumo</h3>
+          <button class="link botao-relatorio" id="botao-relatorio" type="button" title="Texto da semana pra copiar">📋 Relatório</button>
+          <div class="abas" id="abas-resumo">
+            <button type="button" data-periodo="hoje">Hoje</button>
+            <button type="button" data-periodo="semana">Semana</button>
+          </div>
+        </div>
+        <div class="cartao resumo" id="resumo"></div>
+      </section>
+
+      <section class="bloco">
+        <div class="titulo-linha">
+          <h3>Ano no ninho</h3>
+          <span class="contador" id="mapa-total"></span>
+        </div>
+        <div class="cartao mapa">
+          <svg id="mapa" role="img" aria-label="Mapa de calor do ano: horas registradas por dia"></svg>
+          <div class="mapa-rodape">
+            <span class="dica" id="mapa-legenda"></span>
+            <span class="legenda" aria-hidden="true">menos <i class="n0"></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><i class="n4"></i> mais</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="aba" data-aba="conquistas" hidden>
+      <section class="bloco">
+        <div class="titulo-linha">
+          <h3>Conquistas</h3>
+          <span class="contador" id="contador-conquistas"></span>
+        </div>
+        <div class="conquistas" id="conquistas"></div>
+        <p class="dica">As com 🎁 liberam acessórios: clique numa conquista feita para vestir o franguinho.</p>
+      </section>
+    </div>
   </main>
+
+  <nav class="barra-abas" id="barra-abas" aria-label="Seções">
+    <button type="button" data-aba="agora" class="ativa"><span>🐣</span>Agora</button>
+    <button type="button" data-aba="historico"><span>📜</span>Histórico</button>
+    <button type="button" data-aba="numeros"><span>📊</span>Números</button>
+    <button type="button" data-aba="conquistas"><span>🏆</span>Conquistas<i class="bolinha-nova" id="conquista-nova" hidden></i></button>
+  </nav>
 
   <datalist id="sugestoes"></datalist>
 

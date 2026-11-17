@@ -674,3 +674,61 @@ kbd { font: inherit; font-weight: 900; background: var(--cartao); border: 2px so
 .pomodoro-linha { font-weight: 800; color: var(--vermelho); margin: -6px 0 10px; font-variant-numeric: tabular-nums; }
 .pausa .relogio { color: var(--verde); }
 .botao-retomar { align-self: center; font-size: 14px; }
+
+/* ---------- Abas ---------- */
+
+.app { padding-bottom: 96px; }
+.aba { display: flex; flex-direction: column; gap: 18px; }
+
+.barra-abas {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 6px 10px calc(8px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--cartao) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 2px solid var(--linha);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -6px 20px rgba(90, 60, 40, 0.08);
+}
+.barra-abas button {
+  position: relative;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--tinta-suave);
+  background: none;
+  border: 0;
+  border-radius: 14px;
+  padding: 6px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.barra-abas button span { font-size: 20px; line-height: 1; transition: transform 0.2s cubic-bezier(.3, 1.6, .6, 1); }
+.barra-abas button:hover { color: var(--tinta); }
+.barra-abas button.ativa { color: var(--laranja); background: color-mix(in srgb, var(--laranja) 12%, transparent); }
+.barra-abas button.ativa span { transform: translateY(-2px) scale(1.12); }
+.bolinha-nova {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 18px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--vermelho);
+  border: 2px solid var(--cartao);
+  animation: pulsa 1.2s ease-in-out infinite;
+}
+
+.aviso { bottom: 92px; }
